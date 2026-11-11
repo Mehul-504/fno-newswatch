@@ -1,0 +1,14 @@
+{
+  "news_channels": ["Stock_market_news_indian_live", "stocknews_live", "sureshrathigroup", "NiftyStockAnalysis",
+                    "Sharemarkettimes_India", "Share_marketinfomania", "stockniftysebi", "ChartEdge03", "geopolitalk",
+                    "Bulk Deals", "StockTape"],
+  "tip_channels": ["TheTradeCartel", "free_option_trading_nifty_stock", "UMAR_PUNJABIl", "Surya X Trades", "techtrades365",
+                   "uuygfr7", "CA..NITIN...MURARKA.OFFICIAL.", "Index trading with CA nitin Murarka"],
+  "include_tip_channels": true,
+  "poll_seconds": 45,
+  "budget_rs": 20000,
+  "alert_weak_news": true,
+  "duplicate_hours": 1,
+  "digests": ["08:50", "15:40", "21:00"],
+  "backfill_minutes_on_start": 30
+}

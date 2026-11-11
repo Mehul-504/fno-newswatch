@@ -1,0 +1,1977 @@
+{
+"360ONE": {
+"name": "360 ONE WAM LIMITED",
+"lot": 500,
+"breeze": "IIFWEA",
+"aliases": [
+" 360 ONE "
+]
+},
+"ABB": {
+"name": "ABB INDIA LIMITED",
+"lot": 125,
+"breeze": "ABB",
+"aliases": []
+},
+"ABCAPITAL": {
+"name": "ADITYA BIRLA CAPITAL LTD.",
+"lot": 1550,
+"breeze": "ADICAP",
+"aliases": [
+" AB CAPITAL ",
+" ABCAPITAL ",
+" ADITYA BIRLA ",
+" ADITYA BIRLA CAPITAL "
+]
+},
+"ADANIENSOL": {
+"name": "ADANI ENERGY SOLUTION LTD",
+"lot": 675,
+"breeze": "ADATRA",
+"aliases": [
+" ADANI ENERGY ",
+" ADANIENSOL "
+]
+},
+"ADANIENT": {
+"name": "ADANI ENTERPRISES LIMITED",
+"lot": 309,
+"breeze": "ADAENT",
+"aliases": [
+" ADANI ENTERPRISES ",
+" ADANIENT "
+]
+},
+"ADANIGREEN": {
+"name": "ADANI GREEN ENERGY LTD",
+"lot": 600,
+"breeze": "ADAGRE",
+"aliases": [
+" ADANI GREEN ",
+" ADANIGREEN "
+]
+},
+"ADANIPORTS": {
+"name": "ADANI PORT & SEZ LTD",
+"lot": 475,
+"breeze": "ADAPOR",
+"aliases": [
+" ADANI PORT ",
+" ADANIPORTS "
+]
+},
+"ADANIPOWER": {
+"name": "ADANI POWER LTD",
+"lot": 3550,
+"breeze": "ADAPOW",
+"aliases": [
+" ADANI POWER ",
+" ADANIPOWER "
+]
+},
+"ALKEM": {
+"name": "ALKEM LABORATORIES LTD.",
+"lot": 125,
+"breeze": "ALKLAB",
+"aliases": [
+" ALKEM ",
+" ALKEM LABORATORIES "
+]
+},
+"AMBER": {
+"name": "AMBER ENTERPRISES (I) LTD",
+"lot": 100,
+"breeze": "AMBEN",
+"aliases": [
+" AMBER ",
+" AMBER ENTERPRISES "
+]
+},
+"AMBUJACEM": {
+"name": "AMBUJA CEMENTS LTD",
+"lot": 1200,
+"breeze": "AMBCE",
+"aliases": [
+" AMBUJA CEMENTS ",
+" AMBUJACEM "
+]
+},
+"ANANDRATHI": {
+"name": "ANAND RATHI WEALTH LTD",
+"lot": 250,
+"breeze": "ANARAT",
+"aliases": [
+" ANAND ",
+" ANAND RATHI ",
+" ANANDRATHI "
+]
+},
+"ANGELONE": {
+"name": "ANGEL ONE LIMITED",
+"lot": 2500,
+"breeze": "ANGBRO",
+"aliases": [
+" ANGEL ",
+" ANGEL ONE ",
+" ANGELONE "
+]
+},
+"APLAPOLLO": {
+"name": "APL APOLLO TUBES LTD",
+"lot": 350,
+"breeze": "APLAPO",
+"aliases": [
+" APL APOLLO ",
+" APLAPOLLO "
+]
+},
+"APOLLOHOSP": {
+"name": "APOLLO HOSPITALS ENTER. L",
+"lot": 125,
+"breeze": "APOHOS",
+"aliases": [
+" APOLLO ",
+" APOLLO HOSPITALS ",
+" APOLLOHOSP "
+]
+},
+"ASHOKLEY": {
+"name": "ASHOK LEYLAND LTD",
+"lot": 5000,
+"breeze": "ASHLEY",
+"aliases": [
+" ASHOK LEYLAND ",
+" ASHOKLEY "
+]
+},
+"ASIANPAINT": {
+"name": "ASIAN PAINTS LIMITED",
+"lot": 250,
+"breeze": "ASIPAI",
+"aliases": [
+" ASIAN ",
+" ASIAN PAINTS ",
+" ASIANPAINT "
+]
+},
+"ASTRAL": {
+"name": "ASTRAL LIMITED",
+"lot": 425,
+"breeze": "ASTPOL",
+"aliases": [
+" ASTRAL "
+]
+},
+"ATHERENERG": {
+"name": "ATHER ENERGY LIMITED",
+"lot": 375,
+"breeze": "ATHENE",
+"aliases": [
+" ATHER ",
+" ATHER ENERGY ",
+" ATHERENERG "
+]
+},
+"AUBANK": {
+"name": "AU SMALL FINANCE BANK LTD",
+"lot": 500,
+"breeze": "AUSMA",
+"aliases": [
+" AU SMALL ",
+" AUBANK "
+]
+},
+"AUROPHARMA": {
+"name": "AUROBINDO PHARMA LTD",
+"lot": 550,
+"breeze": "AURPHA",
+"aliases": [
+" AUROBINDO ",
+" AUROBINDO PHARMA ",
+" AUROPHARMA "
+]
+},
+"AXISBANK": {
+"name": "AXIS BANK LIMITED",
+"lot": 625,
+"breeze": "AXIBAN",
+"aliases": [
+" AXIS BANK ",
+" AXISBANK "
+]
+},
+"BAJAJ-AUTO": {
+"name": "BAJAJ AUTO LIMITED",
+"lot": 75,
+"breeze": "BAAUTO",
+"aliases": [
+" BAJAJ AUTO "
+]
+},
+"BAJAJFINSV": {
+"name": "BAJAJ FINSERV LTD.",
+"lot": 300,
+"breeze": "BAFINS",
+"aliases": [
+" BAJAJ FINSERV ",
+" BAJAJFINSV "
+]
+},
+"BAJFINANCE": {
+"name": "BAJAJ FINANCE LIMITED",
+"lot": 750,
+"breeze": "BAJFI",
+"aliases": [
+" BAJAJ FINANCE ",
+" BAJFINANCE "
+]
+},
+"BANDHANBNK": {
+"name": "BANDHAN BANK LIMITED",
+"lot": 3600,
+"breeze": "BANBAN",
+"aliases": [
+" BANDHAN BANK ",
+" BANDHANBNK "
+]
+},
+"BANKBARODA": {
+"name": "BANK OF BARODA",
+"lot": 2925,
+"breeze": "BANBAR",
+"aliases": [
+" BANK BARODA ",
+" BANKBARODA "
+]
+},
+"BANKINDIA": {
+"name": "BANK OF INDIA",
+"lot": 5200,
+"breeze": "BANIND",
+"aliases": [
+" BANKINDIA "
+]
+},
+"BDL": {
+"name": "BHARAT DYNAMICS LIMITED",
+"lot": 425,
+"breeze": "BHADYN",
+"aliases": [
+" BHARAT DYNAMICS "
+]
+},
+"BEL": {
+"name": "BHARAT ELECTRONICS LTD",
+"lot": 1425,
+"breeze": "BHAELE",
+"aliases": [
+" BHARAT ELECTRONICS "
+]
+},
+"BHARATFORG": {
+"name": "BHARAT FORGE LTD",
+"lot": 500,
+"breeze": "BHAFOR",
+"aliases": [
+" BHARAT FORGE ",
+" BHARATFORG "
+]
+},
+"BHARTIARTL": {
+"name": "BHARTI AIRTEL LIMITED",
+"lot": 475,
+"breeze": "BHAAIR",
+"aliases": [
+" AIRTEL ",
+" BHARTI ",
+" BHARTI AIRTEL ",
+" BHARTIARTL "
+]
+},
+"BHEL": {
+"name": "BHEL",
+"lot": 2625,
+"breeze": "BHEL",
+"aliases": [
+" BHARAT HEAVY ",
+" BHEL "
+]
+},
+"BIOCON": {
+"name": "BIOCON LIMITED.",
+"lot": 2500,
+"breeze": "BIOCON",
+"aliases": [
+" BIOCON "
+]
+},
+"BLUESTARCO": {
+"name": "BLUE STAR LIMITED",
+"lot": 325,
+"breeze": "BLUSTA",
+"aliases": [
+" BLUE STAR ",
+" BLUESTARCO "
+]
+},
+"BOSCHLTD": {
+"name": "BOSCH LIMITED",
+"lot": 25,
+"breeze": "BOSLIM",
+"aliases": [
+" BOSCH ",
+" BOSCHLTD "
+]
+},
+"BPCL": {
+"name": "BHARAT PETROLEUM CORP  LT",
+"lot": 1975,
+"breeze": "BHAPET",
+"aliases": [
+" BHARAT PETROLEUM ",
+" BPCL "
+]
+},
+"BRITANNIA": {
+"name": "BRITANNIA INDUSTRIES LTD",
+"lot": 125,
+"breeze": "BRIIND",
+"aliases": [
+" BRITANNIA ",
+" BRITANNIA INDUSTRIES "
+]
+},
+"BSE": {
+"name": "BSE LIMITED",
+"lot": 200,
+"breeze": "BSE",
+"aliases": []
+},
+"CAMS": {
+"name": "COMPUTER AGE MNGT SER LTD",
+"lot": 825,
+"breeze": "COMAGE",
+"aliases": [
+" CAMS ",
+" COMPUTER ",
+" COMPUTER AGE "
+]
+},
+"CANBK": {
+"name": "CANARA BANK",
+"lot": 6750,
+"breeze": "CANBAN",
+"aliases": [
+" CANARA BANK ",
+" CANBK "
+]
+},
+"CDSL": {
+"name": "CENTRAL DEPO SER (I) LTD",
+"lot": 475,
+"breeze": "CDSL",
+"aliases": [
+" CDSL ",
+" CENTRAL DEPO "
+]
+},
+"CGPOWER": {
+"name": "CG POWER AND IND SOL LTD",
+"lot": 850,
+"breeze": "CROGRE",
+"aliases": [
+" CG POWER ",
+" CGPOWER "
+]
+},
+"CHOLAFIN": {
+"name": "CHOLAMANDALAM IN & FIN CO",
+"lot": 625,
+"breeze": "CHON44",
+"aliases": [
+" CHOLA  ",
+" CHOLAFIN ",
+" CHOLAMANDALAM ",
+" CHOLAMANDALAM IN ",
+" CHOLAMANDALAM INV "
+]
+},
+"CIPLA": {
+"name": "CIPLA LTD",
+"lot": 425,
+"breeze": "CIPLA",
+"aliases": [
+" CIPLA "
+]
+},
+"COALINDIA": {
+"name": "COAL INDIA LTD",
+"lot": 1350,
+"breeze": "COALIN",
+"aliases": [
+" COAL INDIA ",
+" COALINDIA "
+]
+},
+"COCHINSHIP": {
+"name": "COCHIN SHIPYARD LIMITED",
+"lot": 400,
+"breeze": "COCSHI",
+"aliases": [
+" COCHIN ",
+" COCHIN SHIPYARD ",
+" COCHINSHIP "
+]
+},
+"COFORGE": {
+"name": "COFORGE LIMITED",
+"lot": 475,
+"breeze": "NIITEC",
+"aliases": [
+" COFORGE "
+]
+},
+"COLPAL": {
+"name": "COLGATE PALMOLIVE LTD.",
+"lot": 275,
+"breeze": "COLPAL",
+"aliases": [
+" COLGATE ",
+" COLGATE PALMOLIVE ",
+" COLPAL "
+]
+},
+"CONCOR": {
+"name": "CONTAINER CORP OF IND LTD",
+"lot": 1250,
+"breeze": "CONCOR",
+"aliases": [
+" CONCOR ",
+" CONTAINER ",
+" CONTAINER CORP "
+]
+},
+"COROMANDEL": {
+"name": "COROMANDEL INTERNTL. LTD",
+"lot": 300,
+"breeze": "CORINT",
+"aliases": [
+" COROMANDEL ",
+" COROMANDEL INTERNTL "
+]
+},
+"CROMPTON": {
+"name": "CROMPT GREA CON ELEC LTD",
+"lot": 2150,
+"breeze": "CROGR",
+"aliases": [
+" CROMPT ",
+" CROMPT GREA ",
+" CROMPTON "
+]
+},
+"CUB": {
+"name": "CITY UNION BANK LTD",
+"lot": 2325,
+"breeze": "CITUNI",
+"aliases": [
+" CITY UNION ",
+" CITY UNION BANK "
+]
+},
+"CUMMINSIND": {
+"name": "CUMMINS INDIA LTD",
+"lot": 100,
+"breeze": "CUMIND",
+"aliases": [
+" CUMMINS ",
+" CUMMINSIND "
+]
+},
+"DABUR": {
+"name": "DABUR INDIA LTD",
+"lot": 1250,
+"breeze": "DABIND",
+"aliases": [
+" DABUR "
+]
+},
+"DATAPATTNS": {
+"name": "DATA PATTERNS INDIA LTD",
+"lot": 125,
+"breeze": "DATPAT",
+"aliases": [
+" DATA PATTERNS ",
+" DATAPATTNS "
+]
+},
+"DELHIVERY": {
+"name": "DELHIVERY LIMITED",
+"lot": 2075,
+"breeze": "DELLIM",
+"aliases": [
+" DELHIVERY "
+]
+},
+"DIVISLAB": {
+"name": "DIVI S LABORATORIES LTD",
+"lot": 100,
+"breeze": "DIVLAB",
+"aliases": [
+" DIVI S ",
+" DIVISLAB "
+]
+},
+"DIXON": {
+"name": "DIXON TECHNO (INDIA) LTD",
+"lot": 50,
+"breeze": "DIXTEC",
+"aliases": [
+" DIXON ",
+" DIXON TECHNO "
+]
+},
+"DLF": {
+"name": "DLF LIMITED",
+"lot": 950,
+"breeze": "DLFLIM",
+"aliases": []
+},
+"DMART": {
+"name": "AVENUE SUPERMARTS LIMITED",
+"lot": 150,
+"breeze": "AVESUP",
+"aliases": [
+" AVENUE ",
+" AVENUE SUPERMARTS ",
+" DMART "
+]
+},
+"DRREDDY": {
+"name": "DR. REDDY S LABORATORIES",
+"lot": 625,
+"breeze": "DRREDD",
+"aliases": [
+" DR REDDY ",
+" DR REDDY S ",
+" DR REDDYS ",
+" DRREDDY "
+]
+},
+"EICHERMOT": {
+"name": "EICHER MOTORS LTD",
+"lot": 100,
+"breeze": "EICMOT",
+"aliases": [
+" EICHER ",
+" EICHER MOTORS ",
+" EICHERMOT "
+]
+},
+"ENRIN": {
+"name": "SIEMENS ENERGY INDIA LTD",
+"lot": 175,
+"breeze": "SIEENE",
+"aliases": [
+" ENRIN ",
+" SIEMENS ",
+" SIEMENS ENERGY "
+]
+},
+"ETERNAL": {
+"name": "ETERNAL LIMITED",
+"lot": 2425,
+"breeze": "ZOMLIM",
+"aliases": [
+" ETERNAL "
+]
+},
+"FEDERALBNK": {
+"name": "FEDERAL BANK LTD",
+"lot": 2500,
+"breeze": "FEDBAN",
+"aliases": [
+" FEDERAL BANK ",
+" FEDERALBNK "
+]
+},
+"FORCEMOT": {
+"name": "FORCE MOTORS LIMITED",
+"lot": 25,
+"breeze": "FORMOT",
+"aliases": [
+" FORCE ",
+" FORCE MOTORS ",
+" FORCEMOT "
+]
+},
+"FORTIS": {
+"name": "FORTIS HEALTHCARE LTD",
+"lot": 775,
+"breeze": "FORHEA",
+"aliases": [
+" FORTIS ",
+" FORTIS HEALTHCARE "
+]
+},
+"GAIL": {
+"name": "GAIL (INDIA) LTD",
+"lot": 3550,
+"breeze": "GAIL",
+"aliases": [
+" GAIL "
+]
+},
+"GLENMARK": {
+"name": "GLENMARK PHARMACEUTICALS",
+"lot": 375,
+"breeze": "GLEPHA",
+"aliases": [
+" GLENMARK ",
+" GLENMARK PHARMACEUTICALS "
+]
+},
+"GMRAIRPORT": {
+"name": "GMR AIRPORTS LIMITED",
+"lot": 6975,
+"breeze": "GMRINF",
+"aliases": [
+" GMR AIRPORTS ",
+" GMRAIRPORT "
+]
+},
+"GODFRYPHLP": {
+"name": "GODFREY PHILLIPS INDIA LT",
+"lot": 275,
+"breeze": "GODPHI",
+"aliases": [
+" GODFREY ",
+" GODFREY PHILLIPS ",
+" GODFRYPHLP "
+]
+},
+"GODREJCP": {
+"name": "GODREJ CONSUMER PRODUCTS",
+"lot": 500,
+"breeze": "GODCON",
+"aliases": [
+" GODREJ CONSUMER ",
+" GODREJCP "
+]
+},
+"GODREJPROP": {
+"name": "GODREJ PROPERTIES LTD",
+"lot": 325,
+"breeze": "GODPRO",
+"aliases": [
+" GODREJ PROPERTIES ",
+" GODREJPROP "
+]
+},
+"GRASIM": {
+"name": "GRASIM INDUSTRIES LTD",
+"lot": 250,
+"breeze": "GRASIM",
+"aliases": [
+" GRASIM ",
+" GRASIM INDUSTRIES "
+]
+},
+"GVT&D": {
+"name": "GE VERNOVA T&D INDIA LTD",
+"lot": 125,
+"breeze": "ALSTD",
+"aliases": [
+" GE T&D ",
+" GE VERNOVA ",
+" GE VERNOVA T&D "
+]
+},
+"HAL": {
+"name": "HINDUSTAN AERONAUTICS LTD",
+"lot": 150,
+"breeze": "HINAER",
+"aliases": [
+" HAL  ",
+" HINDUSTAN AERONAUTICS "
+]
+},
+"HAVELLS": {
+"name": "HAVELLS INDIA LIMITED",
+"lot": 500,
+"breeze": "HAVIND",
+"aliases": [
+" HAVELLS "
+]
+},
+"HCLTECH": {
+"name": "HCL TECHNOLOGIES LTD",
+"lot": 400,
+"breeze": "HCLTEC",
+"aliases": [
+" HCL TECHNOLOGIES ",
+" HCLTECH "
+]
+},
+"HDFCAMC": {
+"name": "HDFC AMC LIMITED",
+"lot": 300,
+"breeze": "HDFAMC",
+"aliases": [
+" HDFC AMC ",
+" HDFC ASSET ",
+" HDFCAMC "
+]
+},
+"HDFCBANK": {
+"name": "HDFC BANK LTD",
+"lot": 650,
+"breeze": "HDFBAN",
+"aliases": [
+" HDFC BANK ",
+" HDFCBANK "
+]
+},
+"HDFCLIFE": {
+"name": "HDFC LIFE INS CO LTD",
+"lot": 1100,
+"breeze": "HDFSTA",
+"aliases": [
+" HDFC LIFE ",
+" HDFCLIFE "
+]
+},
+"HEROMOTOCO": {
+"name": "HERO MOTOCORP LIMITED",
+"lot": 150,
+"breeze": "HERHON",
+"aliases": [
+" HERO MOTOCORP ",
+" HEROMOTOCO "
+]
+},
+"HINDALCO": {
+"name": "HINDALCO  INDUSTRIES  LTD",
+"lot": 700,
+"breeze": "HINDAL",
+"aliases": [
+" HINDALCO ",
+" HINDALCO INDUSTRIES "
+]
+},
+"HINDPETRO": {
+"name": "HINDUSTAN PETROLEUM CORP",
+"lot": 2025,
+"breeze": "HINPET",
+"aliases": [
+" HINDPETRO ",
+" HINDUSTAN PETROLEUM ",
+" HPCL "
+]
+},
+"HINDUNILVR": {
+"name": "HINDUSTAN UNILEVER LTD.",
+"lot": 300,
+"breeze": "HINLEV",
+"aliases": [
+" HINDUNILVR ",
+" HINDUSTAN UNILEVER ",
+" HUL  "
+]
+},
+"HINDZINC": {
+"name": "HINDUSTAN ZINC LIMITED",
+"lot": 1225,
+"breeze": "HINZIN",
+"aliases": [
+" HINDUSTAN ZINC ",
+" HINDZINC "
+]
+},
+"HYUNDAI": {
+"name": "HYUNDAI MOTOR INDIA LTD",
+"lot": 275,
+"breeze": "HYUMOT",
+"aliases": [
+" HYUNDAI ",
+" HYUNDAI MOTOR "
+]
+},
+"ICICIBANK": {
+"name": "ICICI BANK LTD.",
+"lot": 700,
+"breeze": "ICIBAN",
+"aliases": [
+" ICICI BANK ",
+" ICICIBANK "
+]
+},
+"ICICIGI": {
+"name": "ICICI LOMBARD GIC LIMITED",
+"lot": 325,
+"breeze": "ICILOM",
+"aliases": [
+" ICICI LOMBARD ",
+" ICICIGI "
+]
+},
+"ICICILIFE": {
+"name": "ICICI LIFE INSURANCE LTD",
+"lot": 925,
+"breeze": "ICIPRU",
+"aliases": [
+" ICICI LIFE ",
+" ICICILIFE "
+]
+},
+"IDEA": {
+"name": "VODAFONE IDEA LIMITED",
+"lot": 71475,
+"breeze": "IDECEL",
+"aliases": [
+" IDEA ",
+" VODAFONE ",
+" VODAFONE IDEA "
+]
+},
+"IDFCFIRSTB": {
+"name": "IDFC FIRST BANK LIMITED",
+"lot": 9275,
+"breeze": "IDFBAN",
+"aliases": [
+" IDFC FIRST ",
+" IDFCFIRSTB "
+]
+},
+"IEX": {
+"name": "INDIAN ENERGY EXC LTD",
+"lot": 4350,
+"breeze": "INDEN",
+"aliases": [
+" IEX  ",
+" INDIAN ENERGY ",
+" INDIAN ENERGY EXCHANGE "
+]
+},
+"INDHOTEL": {
+"name": "THE INDIAN HOTELS CO. LTD",
+"lot": 1000,
+"breeze": "INDHOT",
+"aliases": [
+" INDHOTEL ",
+" INDIAN HOTELS "
+]
+},
+"INDIANB": {
+"name": "INDIAN BANK",
+"lot": 1000,
+"breeze": "INDIBA",
+"aliases": [
+" INDIAN BANK ",
+" INDIANB "
+]
+},
+"INDIGO": {
+"name": "INTERGLOBE AVIATION LTD",
+"lot": 150,
+"breeze": "INTAVI",
+"aliases": [
+" INDIGO ",
+" INTERGLOBE ",
+" INTERGLOBE AVIATION "
+]
+},
+"INDUSINDBK": {
+"name": "INDUSIND BANK LIMITED",
+"lot": 700,
+"breeze": "INDBA",
+"aliases": [
+" INDUSIND ",
+" INDUSIND BANK ",
+" INDUSINDBK "
+]
+},
+"INDUSTOWER": {
+"name": "INDUS TOWERS LIMITED",
+"lot": 1700,
+"breeze": "BHAINF",
+"aliases": [
+" INDUS TOWERS ",
+" INDUSTOWER "
+]
+},
+"INFY": {
+"name": "INFOSYS LIMITED",
+"lot": 400,
+"breeze": "INFTEC",
+"aliases": [
+" INFOSYS ",
+" INFY "
+]
+},
+"INOXWIND": {
+"name": "INOX WIND LIMITED",
+"lot": 6400,
+"breeze": "INOWIN",
+"aliases": [
+" INOX WIND ",
+" INOXWIND "
+]
+},
+"IOC": {
+"name": "INDIAN OIL CORP LTD",
+"lot": 4875,
+"breeze": "INDOIL",
+"aliases": [
+" INDIAN OIL "
+]
+},
+"IREDA": {
+"name": "INDIAN RENEWABLE ENERGY",
+"lot": 4525,
+"breeze": "INDREN",
+"aliases": [
+" INDIAN RENEWABLE ",
+" IREDA "
+]
+},
+"IRFC": {
+"name": "INDIAN RAILWAY FIN CORP L",
+"lot": 5425,
+"breeze": "INDR",
+"aliases": [
+" INDIAN RAILWAY ",
+" IRFC "
+]
+},
+"ITC": {
+"name": "ITC LTD",
+"lot": 1725,
+"breeze": "ITC",
+"aliases": []
+},
+"JINDALSTEL": {
+"name": "JINDAL STEEL LIMITED",
+"lot": 625,
+"breeze": "JINSP",
+"aliases": [
+" JINDAL STEEL ",
+" JINDALSTEL "
+]
+},
+"JIOFIN": {
+"name": "JIO FIN SERVICES LTD",
+"lot": 2350,
+"breeze": "JIOFIN",
+"aliases": [
+" JIO FIN ",
+" JIOFIN "
+]
+},
+"JSWENERGY": {
+"name": "JSW ENERGY LIMITED",
+"lot": 1075,
+"breeze": "JSWENE",
+"aliases": [
+" JSW ENERGY ",
+" JSWENERGY "
+]
+},
+"JSWSTEEL": {
+"name": "JSW STEEL LIMITED",
+"lot": 675,
+"breeze": "JSWSTE",
+"aliases": [
+" JSW STEEL ",
+" JSWSTEEL "
+]
+},
+"JUBLFOOD": {
+"name": "JUBILANT FOODWORKS LTD",
+"lot": 1250,
+"breeze": "JUBFOO",
+"aliases": [
+" JUBILANT ",
+" JUBILANT FOODWORKS ",
+" JUBLFOOD "
+]
+},
+"KALYANKJIL": {
+"name": "KALYAN JEWELLERS IND LTD",
+"lot": 1350,
+"breeze": "KALJEW",
+"aliases": [
+" KALYAN ",
+" KALYAN JEWELLERS ",
+" KALYANKJIL "
+]
+},
+"KARURVYSYA": {
+"name": "KARUR VYSYA BANK LTD",
+"lot": 1550,
+"breeze": "KARVYS",
+"aliases": [
+" KARUR ",
+" KARUR VYSYA ",
+" KARURVYSYA "
+]
+},
+"KAYNES": {
+"name": "KAYNES TECHNOLOGY IND LTD",
+"lot": 150,
+"breeze": "KAYTEC",
+"aliases": [
+" KAYNES ",
+" KAYNES TECHNOLOGY "
+]
+},
+"KEI": {
+"name": "KEI INDUSTRIES LTD.",
+"lot": 175,
+"breeze": "KEIIND",
+"aliases": [
+" KEI INDUSTRIES "
+]
+},
+"KFINTECH": {
+"name": "KFIN TECHNOLOGIES LIMITED",
+"lot": 575,
+"breeze": "KFITEC",
+"aliases": [
+" KFIN TECHNOLOGIES ",
+" KFINTECH "
+]
+},
+"KOTAKBANK": {
+"name": "KOTAK MAHINDRA BANK LTD",
+"lot": 2000,
+"breeze": "KOTMAH",
+"aliases": [
+" KOTAK BANK ",
+" KOTAK MAHINDRA ",
+" KOTAK MAHINDRA BANK ",
+" KOTAKBANK "
+]
+},
+"KPITTECH": {
+"name": "KPIT TECHNOLOGIES LIMITED",
+"lot": 775,
+"breeze": "KPITE",
+"aliases": [
+" KPIT ",
+" KPIT TECHNOLOGIES ",
+" KPITTECH "
+]
+},
+"LAURUSLABS": {
+"name": "LAURUS LABS LIMITED",
+"lot": 425,
+"breeze": "LAULAB",
+"aliases": [
+" LAURUS ",
+" LAURUS LABS ",
+" LAURUSLABS "
+]
+},
+"LICHSGFIN": {
+"name": "LIC HOUSING FINANCE LTD",
+"lot": 1000,
+"breeze": "LICHF",
+"aliases": [
+" LIC HOUSING ",
+" LICHSGFIN "
+]
+},
+"LICI": {
+"name": "LIFE INSURA CORP OF INDIA",
+"lot": 1400,
+"breeze": "LIC",
+"aliases": [
+" LICI ",
+" LIFE INSURA "
+]
+},
+"LODHA": {
+"name": "LODHA DEVELOPERS LIMITED",
+"lot": 625,
+"breeze": "MACDEV",
+"aliases": [
+" LODHA ",
+" LODHA DEVELOPERS "
+]
+},
+"LT": {
+"name": "LARSEN & TOUBRO LTD.",
+"lot": 175,
+"breeze": "LARTOU",
+"aliases": [
+" L&T  ",
+" LARSEN ",
+" LARSEN TOUBRO "
+]
+},
+"LTF": {
+"name": "L&T FINANCE LIMITED",
+"lot": 2250,
+"breeze": "LTFINA",
+"aliases": [
+" L&T FINANCE "
+]
+},
+"LTM": {
+"name": "LTM LIMITED",
+"lot": 150,
+"breeze": "LTINFO",
+"aliases": []
+},
+"LUPIN": {
+"name": "LUPIN LIMITED",
+"lot": 425,
+"breeze": "LUPIN",
+"aliases": [
+" LUPIN "
+]
+},
+"M&M": {
+"name": "MAHINDRA & MAHINDRA LTD",
+"lot": 200,
+"breeze": "MAHMAH",
+"aliases": [
+" M&M  ",
+" MAHINDRA & MAHINDRA ",
+" MAHINDRA MAHINDRA "
+]
+},
+"MAHABANK": {
+"name": "BANK OF MAHARASHTRA",
+"lot": 6500,
+"breeze": "BANMAH",
+"aliases": [
+" BANK MAHARASHTRA ",
+" MAHABANK "
+]
+},
+"MANAPPURAM": {
+"name": "MANAPPURAM FINANCE LTD",
+"lot": 3000,
+"breeze": "MANAFI",
+"aliases": [
+" MANAPPURAM ",
+" MANAPPURAM FINANCE "
+]
+},
+"MANKIND": {
+"name": "MANKIND PHARMA LIMITED",
+"lot": 250,
+"breeze": "MAPHA",
+"aliases": [
+" MANKIND ",
+" MANKIND PHARMA "
+]
+},
+"MARICO": {
+"name": "MARICO LIMITED",
+"lot": 1200,
+"breeze": "MARLIM",
+"aliases": [
+" MARICO "
+]
+},
+"MARUTI": {
+"name": "MARUTI SUZUKI INDIA LTD.",
+"lot": 50,
+"breeze": "MARUTI",
+"aliases": [
+" MARUTI ",
+" MARUTI SUZUKI "
+]
+},
+"MAXHEALTH": {
+"name": "MAX HEALTHCARE INS LTD",
+"lot": 525,
+"breeze": "MAXHEA",
+"aliases": [
+" MAX HEALTHCARE ",
+" MAXHEALTH "
+]
+},
+"MAZDOCK": {
+"name": "MAZAGON DOCK SHIPBUIL LTD",
+"lot": 225,
+"breeze": "MAZDOC",
+"aliases": [
+" MAZAGON ",
+" MAZAGON DOCK ",
+" MAZDOCK "
+]
+},
+"MCX": {
+"name": "MULTI COMMODITY EXCHANGE",
+"lot": 225,
+"breeze": "MCX",
+"aliases": [
+" MULTI ",
+" MULTI COMMODITY "
+]
+},
+"MFSL": {
+"name": "MAX FINANCIAL SERV LTD",
+"lot": 400,
+"breeze": "MAXFIN",
+"aliases": [
+" MAX FINANCIAL ",
+" MFSL "
+]
+},
+"MOTHERSON": {
+"name": "SAMVRDHNA MTHRSN INTL LTD",
+"lot": 6150,
+"breeze": "MOTSUM",
+"aliases": [
+" MOTHERSON ",
+" SAMVRDHNA ",
+" SAMVRDHNA MTHRSN "
+]
+},
+"MOTILALOFS": {
+"name": "MOTILAL OSWAL FIN LTD",
+"lot": 775,
+"breeze": "MOTOSW",
+"aliases": [
+" MOTILAL ",
+" MOTILAL OSWAL ",
+" MOTILALOFS "
+]
+},
+"MPHASIS": {
+"name": "MPHASIS LIMITED",
+"lot": 275,
+"breeze": "MPHLIM",
+"aliases": [
+" MPHASIS "
+]
+},
+"MUTHOOTFIN": {
+"name": "MUTHOOT FINANCE LIMITED",
+"lot": 275,
+"breeze": "MUTFIN",
+"aliases": [
+" MUTHOOT ",
+" MUTHOOT FIN ",
+" MUTHOOT FINANCE ",
+" MUTHOOTFIN "
+]
+},
+"NAM-INDIA": {
+"name": "NIPPON L I A M LTD",
+"lot": 625,
+"breeze": "RELNIP",
+"aliases": [
+" NIPPON ",
+" NIPPON L "
+]
+},
+"NATIONALUM": {
+"name": "NATIONAL ALUMINIUM CO LTD",
+"lot": 1875,
+"breeze": "NATALU",
+"aliases": [
+" NATIONAL ALUMINIUM ",
+" NATIONALUM "
+]
+},
+"NAUKRI": {
+"name": "INFO EDGE (I) LTD",
+"lot": 550,
+"breeze": "INFEDG",
+"aliases": [
+" INFO EDGE ",
+" NAUKRI "
+]
+},
+"NAVINFLUOR": {
+"name": "NAVIN FLUORINE INT. LTD",
+"lot": 75,
+"breeze": "NAVFLU",
+"aliases": [
+" NAVIN ",
+" NAVIN FLUORINE ",
+" NAVINFLUOR "
+]
+},
+"NBCC": {
+"name": "NBCC (INDIA) LIMITED",
+"lot": 6500,
+"breeze": "NBCC",
+"aliases": [
+" NBCC "
+]
+},
+"NESTLEIND": {
+"name": "NESTLE INDIA LIMITED",
+"lot": 500,
+"breeze": "NESIND",
+"aliases": [
+" NESTLE ",
+" NESTLEIND "
+]
+},
+"NHPC": {
+"name": "NHPC LTD",
+"lot": 6950,
+"breeze": "NHPC",
+"aliases": [
+" NHPC "
+]
+},
+"NMDC": {
+"name": "NMDC LTD.",
+"lot": 6750,
+"breeze": "NATMIN",
+"aliases": [
+" NMDC "
+]
+},
+"NTPC": {
+"name": "NTPC LTD",
+"lot": 1500,
+"breeze": "NTPC",
+"aliases": [
+" NTPC "
+]
+},
+"NYKAA": {
+"name": "FSN E COMMERCE VENTURES",
+"lot": 3125,
+"breeze": "FSNECO",
+"aliases": [
+" FSN E ",
+" NYKAA "
+]
+},
+"OBEROIRLTY": {
+"name": "OBEROI REALTY LIMITED",
+"lot": 350,
+"breeze": "OBEREA",
+"aliases": [
+" OBEROI ",
+" OBEROI REALTY ",
+" OBEROIRLTY "
+]
+},
+"OFSS": {
+"name": "ORACLE FIN SERV SOFT LTD.",
+"lot": 50,
+"breeze": "ORAFIN",
+"aliases": [
+" OFSS ",
+" ORACLE FIN "
+]
+},
+"OIL": {
+"name": "OIL INDIA LTD",
+"lot": 1400,
+"breeze": "OILIND",
+"aliases": []
+},
+"ONGC": {
+"name": "OIL AND NATURAL GAS CORP.",
+"lot": 2250,
+"breeze": "ONGC",
+"aliases": [
+" OIL NATURAL ",
+" ONGC "
+]
+},
+"PAGEIND": {
+"name": "PAGE INDUSTRIES LTD",
+"lot": 20,
+"breeze": "PAGIND",
+"aliases": [
+" PAGE INDUSTRIES ",
+" PAGEIND "
+]
+},
+"PATANJALI": {
+"name": "PATANJALI FOODS LIMITED",
+"lot": 1075,
+"breeze": "RUCSOY",
+"aliases": [
+" PATANJALI ",
+" PATANJALI FOODS "
+]
+},
+"PAYTM": {
+"name": "ONE 97 COMMUNICATIONS LTD",
+"lot": 725,
+"breeze": "ONE97",
+"aliases": [
+" ONE 97 ",
+" PAYTM "
+]
+},
+"PERSISTENT": {
+"name": "PERSISTENT SYSTEMS LTD",
+"lot": 125,
+"breeze": "PERSYS",
+"aliases": [
+" PERSISTENT ",
+" PERSISTENT SYSTEMS "
+]
+},
+"PETRONET": {
+"name": "PETRONET LNG LIMITED",
+"lot": 1900,
+"breeze": "PETLNG",
+"aliases": [
+" PETRONET ",
+" PETRONET LNG "
+]
+},
+"PFC": {
+"name": "POWER FIN CORP LTD.",
+"lot": 1300,
+"breeze": "POWFIN",
+"aliases": [
+" POWER FIN ",
+" POWER FINANCE "
+]
+},
+"PGEL": {
+"name": "PG ELECTROPLAST LTD",
+"lot": 950,
+"breeze": "PGELEC",
+"aliases": [
+" PG ELECTROPLAST ",
+" PGEL "
+]
+},
+"PHOENIXLTD": {
+"name": "THE PHOENIX MILLS LTD",
+"lot": 350,
+"breeze": "PHOMIL",
+"aliases": [
+" PHOENIX ",
+" PHOENIX MILLS ",
+" PHOENIXLTD "
+]
+},
+"PIDILITIND": {
+"name": "PIDILITE INDUSTRIES LTD",
+"lot": 500,
+"breeze": "PIDIND",
+"aliases": [
+" PIDILITE ",
+" PIDILITE INDUSTRIES ",
+" PIDILITIND "
+]
+},
+"PIIND": {
+"name": "PI INDUSTRIES LTD",
+"lot": 175,
+"breeze": "PIIND",
+"aliases": [
+" PI INDUSTRIES ",
+" PIIND "
+]
+},
+"PNB": {
+"name": "PUNJAB NATIONAL BANK",
+"lot": 8000,
+"breeze": "PUNBAN",
+"aliases": [
+" PUNJAB NATIONAL "
+]
+},
+"PNBHOUSING": {
+"name": "PNB HOUSING FIN LTD.",
+"lot": 650,
+"breeze": "PNBHOU",
+"aliases": [
+" PNB HOUSING ",
+" PNBHOUSING "
+]
+},
+"POLICYBZR": {
+"name": "PB FINTECH LIMITED",
+"lot": 350,
+"breeze": "PBFINT",
+"aliases": [
+" PB FINTECH ",
+" POLICY BAZAAR ",
+" POLICYBAZAAR ",
+" POLICYBZR "
+]
+},
+"POLYCAB": {
+"name": "POLYCAB INDIA LIMITED",
+"lot": 125,
+"breeze": "POLI",
+"aliases": [
+" POLYCAB "
+]
+},
+"POWERGRID": {
+"name": "POWER GRID CORP. LTD.",
+"lot": 1900,
+"breeze": "POWGRI",
+"aliases": [
+" POWER GRID ",
+" POWERGRID "
+]
+},
+"POWERINDIA": {
+"name": "HITACHI ENERGY INDIA LTD",
+"lot": 25,
+"breeze": "ABBPOW",
+"aliases": [
+" HITACHI ",
+" HITACHI ENERGY ",
+" POWERINDIA "
+]
+},
+"PREMIERENE": {
+"name": "PREMIER ENERGIES LIMITED",
+"lot": 650,
+"breeze": "PREENR",
+"aliases": [
+" PREMIER ",
+" PREMIER ENERGIES ",
+" PREMIERENE "
+]
+},
+"PRESTIGE": {
+"name": "PRESTIGE ESTATE LTD",
+"lot": 450,
+"breeze": "PREEST",
+"aliases": [
+" PRESTIGE ",
+" PRESTIGE ESTATE "
+]
+},
+"RADICO": {
+"name": "RADICO KHAITAN LTD",
+"lot": 150,
+"breeze": "RADKHA",
+"aliases": [
+" RADICO ",
+" RADICO KHAITAN "
+]
+},
+"RBLBANK": {
+"name": "RBL BANK LIMITED",
+"lot": 3175,
+"breeze": "RBLBAN",
+"aliases": [
+" RBL BANK ",
+" RBLBANK "
+]
+},
+"RECLTD": {
+"name": "REC LIMITED",
+"lot": 1575,
+"breeze": "RURELE",
+"aliases": [
+" REC LIMITED ",
+" REC LTD ",
+" RECLTD "
+]
+},
+"RELIANCE": {
+"name": "RELIANCE INDUSTRIES LTD",
+"lot": 500,
+"breeze": "RELIND",
+"aliases": [
+" RELIANCE ",
+" RELIANCE INDUSTRIES "
+]
+},
+"RVNL": {
+"name": "RAIL VIKAS NIGAM LIMITED",
+"lot": 1925,
+"breeze": "RAIVIK",
+"aliases": [
+" RAIL VIKAS ",
+" RVNL "
+]
+},
+"SAGILITY": {
+"name": "SAGILITY LIMITED",
+"lot": 12000,
+"breeze": "SAGINI",
+"aliases": [
+" SAGILITY "
+]
+},
+"SAIL": {
+"name": "STEEL AUTHORITY OF INDIA",
+"lot": 4700,
+"breeze": "SAIL",
+"aliases": [
+" SAIL ",
+" STEEL ",
+" STEEL AUTHORITY "
+]
+},
+"SBICARD": {
+"name": "SBI CARDS & PAY SER LTD",
+"lot": 800,
+"breeze": "SBICAR",
+"aliases": [
+" SBI CARD ",
+" SBI CARDS ",
+" SBICARD "
+]
+},
+"SBILIFE": {
+"name": "SBI LIFE INSURANCE CO LTD",
+"lot": 375,
+"breeze": "SBILIF",
+"aliases": [
+" SBI LIFE ",
+" SBILIFE "
+]
+},
+"SBIN": {
+"name": "STATE BANK OF INDIA",
+"lot": 750,
+"breeze": "STABAN",
+"aliases": [
+" SBI  ",
+" SBIN ",
+" STATE BANK ",
+" STATE BANK OF INDIA "
+]
+},
+"SHREECEM": {
+"name": "SHREE CEMENT LIMITED",
+"lot": 25,
+"breeze": "SHRCEM",
+"aliases": [
+" SHREE ",
+" SHREE CEMENT ",
+" SHREECEM "
+]
+},
+"SHRIRAMFIN": {
+"name": "SHRIRAM FINANCE LIMITED",
+"lot": 825,
+"breeze": "SHRTRA",
+"aliases": [
+" SHRIRAM FIN ",
+" SHRIRAM FINANCE ",
+" SHRIRAMFIN "
+]
+},
+"SIEMENS": {
+"name": "SIEMENS LTD",
+"lot": 175,
+"breeze": "SIEMEN",
+"aliases": [
+" SIEMENS "
+]
+},
+"SOLARINDS": {
+"name": "SOLAR INDUSTRIES (I) LTD",
+"lot": 25,
+"breeze": "SOLIN",
+"aliases": [
+" SOLAR ",
+" SOLAR INDUSTRIES ",
+" SOLARINDS "
+]
+},
+"SONACOMS": {
+"name": "SONA BLW PRECISION FRGS L",
+"lot": 1225,
+"breeze": "SONBLW",
+"aliases": [
+" SONA BLW ",
+" SONACOMS "
+]
+},
+"SRF": {
+"name": "SRF LTD",
+"lot": 200,
+"breeze": "SRF",
+"aliases": []
+},
+"SUNPHARMA": {
+"name": "SUN PHARMACEUTICAL IND L",
+"lot": 350,
+"breeze": "SUNPHA",
+"aliases": [
+" SUN PHARMA ",
+" SUN PHARMACEUTICAL ",
+" SUNPHARMA "
+]
+},
+"SUPREMEIND": {
+"name": "SUPREME INDUSTRIES LTD",
+"lot": 175,
+"breeze": "SUPIND",
+"aliases": [
+" SUPREME ",
+" SUPREME IND ",
+" SUPREME INDUSTRIES ",
+" SUPREMEIND "
+]
+},
+"SUZLON": {
+"name": "SUZLON ENERGY LIMITED",
+"lot": 12700,
+"breeze": "SUZENE",
+"aliases": [
+" SUZLON ",
+" SUZLON ENERGY "
+]
+},
+"SWIGGY": {
+"name": "SWIGGY LIMITED",
+"lot": 1825,
+"breeze": "SWILIM",
+"aliases": [
+" SWIGGY "
+]
+},
+"SYRMA": {
+"name": "SYRMA SGS TECHNOLOGY LTD",
+"lot": 325,
+"breeze": "SYRTEC",
+"aliases": [
+" SYRMA ",
+" SYRMA SGS "
+]
+},
+"TATACONSUM": {
+"name": "TATA CONSUMER PRODUCT LTD",
+"lot": 550,
+"breeze": "TATGLO",
+"aliases": [
+" TATA CONSUMER ",
+" TATACONSUM "
+]
+},
+"TATAELXSI": {
+"name": "TATA ELXSI LIMITED",
+"lot": 125,
+"breeze": "TATELX",
+"aliases": [
+" TATA ELXSI ",
+" TATAELXSI "
+]
+},
+"TATAPOWER": {
+"name": "TATA POWER CO LTD",
+"lot": 1450,
+"breeze": "TATPOW",
+"aliases": [
+" TATA POWER ",
+" TATAPOWER "
+]
+},
+"TATASTEEL": {
+"name": "TATA STEEL LIMITED",
+"lot": 2750,
+"breeze": "TATSTE",
+"aliases": [
+" TATA STEEL ",
+" TATASTEEL "
+]
+},
+"TCS": {
+"name": "TATA CONSULTANCY SERV LT",
+"lot": 225,
+"breeze": "TCS",
+"aliases": [
+" TATA CONSULTANCY ",
+" TCS  "
+]
+},
+"TECHM": {
+"name": "TECH MAHINDRA LIMITED",
+"lot": 600,
+"breeze": "TECMAH",
+"aliases": [
+" TECH MAHINDRA ",
+" TECHM "
+]
+},
+"TIINDIA": {
+"name": "TUBE INVEST OF INDIA LTD",
+"lot": 200,
+"breeze": "TUBIN",
+"aliases": [
+" TIINDIA ",
+" TUBE INVEST "
+]
+},
+"TITAN": {
+"name": "TITAN COMPANY LIMITED",
+"lot": 175,
+"breeze": "TITIND",
+"aliases": [
+" TITAN "
+]
+},
+"TMPV": {
+"name": "TATA MOTORS PASS VEH LTD",
+"lot": 1600,
+"breeze": "TATMOT",
+"aliases": [
+" TATA MOTORS ",
+" TMPV "
+]
+},
+"TORNTPHARM": {
+"name": "TORRENT PHARMACEUTICALS L",
+"lot": 125,
+"breeze": "TORPHA",
+"aliases": [
+" TORNTPHARM ",
+" TORRENT PHARMACEUTICALS "
+]
+},
+"TRENT": {
+"name": "TRENT LTD",
+"lot": 225,
+"breeze": "TRENT",
+"aliases": [
+" TRENT "
+]
+},
+"TVSMOTOR": {
+"name": "TVS MOTOR COMPANY  LTD",
+"lot": 175,
+"breeze": "TVSMOT",
+"aliases": [
+" TVS MOTOR ",
+" TVSMOTOR "
+]
+},
+"UJJIVANSFB": {
+"name": "UJJIVAN SMALL FINANC BANK",
+"lot": 8000,
+"breeze": "UJJSMA",
+"aliases": [
+" UJJIVAN ",
+" UJJIVAN SMALL ",
+" UJJIVANSFB "
+]
+},
+"ULTRACEMCO": {
+"name": "ULTRATECH CEMENT LIMITED",
+"lot": 50,
+"breeze": "ULTCEM",
+"aliases": [
+" ULTRACEMCO ",
+" ULTRATECH CEMENT "
+]
+},
+"UNIONBANK": {
+"name": "UNION BANK OF INDIA",
+"lot": 4425,
+"breeze": "UNIBAN",
+"aliases": [
+" UNION BANK ",
+" UNIONBANK "
+]
+},
+"UNITDSPR": {
+"name": "UNITED SPIRITS LIMITED",
+"lot": 400,
+"breeze": "UNISPI",
+"aliases": [
+" UNITDSPR ",
+" UNITED SPIRITS "
+]
+},
+"UNOMINDA": {
+"name": "UNO MINDA LIMITED",
+"lot": 550,
+"breeze": "MININD",
+"aliases": [
+" UNO MINDA ",
+" UNOMINDA "
+]
+},
+"UPL": {
+"name": "UPL LIMITED",
+"lot": 1355,
+"breeze": "UNIP",
+"aliases": []
+},
+"VBL": {
+"name": "VARUN BEVERAGES LIMITED",
+"lot": 1275,
+"breeze": "VARBEV",
+"aliases": [
+" VARUN ",
+" VARUN BEVERAGES "
+]
+},
+"VEDL": {
+"name": "VEDANTA LIMITED",
+"lot": 1150,
+"breeze": "VEDLIM",
+"aliases": [
+" VEDANTA ",
+" VEDL "
+]
+},
+"VMM": {
+"name": "VISHAL MEGA MART LIMITED",
+"lot": 4850,
+"breeze": "VISMEG",
+"aliases": [
+" VISHAL ",
+" VISHAL MEGA "
+]
+},
+"VOLTAS": {
+"name": "VOLTAS LTD",
+"lot": 375,
+"breeze": "VOLTAS",
+"aliases": [
+" VOLTAS "
+]
+},
+"WAAREEENER": {
+"name": "WAAREE ENERGIES LIMITED",
+"lot": 175,
+"breeze": "WAAENE",
+"aliases": [
+" WAAREE ",
+" WAAREE ENERGIES ",
+" WAAREEENER "
+]
+},
+"WIPRO": {
+"name": "WIPRO LTD",
+"lot": 3000,
+"breeze": "WIPRO",
+"aliases": [
+" WIPRO "
+]
+},
+"YESBANK": {
+"name": "YES BANK LIMITED",
+"lot": 31100,
+"breeze": "YESBAN",
+"aliases": [
+" YES BANK ",
+" YESBANK "
+]
+},
+"ZYDUSLIFE": {
+"name": "ZYDUS LIFESCIENCES LTD",
+"lot": 450,
+"breeze": "CADHEA",
+"aliases": [
+" ZYDUS ",
+" ZYDUS LIFE ",
+" ZYDUS LIFESCIENCES ",
+" ZYDUSLIFE "
+]
+}
+}

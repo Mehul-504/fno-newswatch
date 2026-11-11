@@ -1,0 +1,71 @@
+name: newswatch
+# Times are UTC (IST = UTC + 5:30). Three back-to-back windows cover 07:30-23:00 IST on weekdays; a run that starts
+# late still stops at its window's end, and the next one waits for it (concurrency group).
+on:
+  schedule:
+    - cron: "0 2 * * 1-5"      # 07:30 IST -> 13:25 (pre-market news, opening, morning)
+    - cron: "50 7 * * 1-5"     # 13:20 IST -> 19:15 (afternoon, close, early results)
+    - cron: "40 13 * * 1-5"    # 19:10 IST -> 23:00 (evening results, next-day plans)
+  workflow_dispatch:
+    inputs:
+      until:
+        description: "stop time IST (HH:MM)"
+        required: true
+        default: "15:40"
+
+concurrency:
+  group: newswatch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: OCR for news images
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr
+      - run: pip install -r requirements.txt
+      - name: Restore state (last message ids, today's alerts, Breeze session sealed with STATE_KEY)
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: nwstate-${{ github.run_id }}
+          restore-keys: nwstate-
+      - name: Window
+        id: win
+        run: |
+          s="${{ github.event.schedule }}"
+          if [ -n "${{ github.event.inputs.until }}" ]; then u="${{ github.event.inputs.until }}"
+          elif [ "$s" = "0 2 * * 1-5" ]; then u=13:25
+          elif [ "$s" = "50 7 * * 1-5" ]; then u=19:15
+          else u=23:00; fi
+          echo "until=$u" >> "$GITHUB_OUTPUT"
+      - name: Watch
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TG_SESSION: ${{ secrets.TG_SESSION }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LLM_URL: ${{ secrets.LLM_URL }}
+          LLM_KEY: ${{ secrets.LLM_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_BACKUP_MODEL: ${{ secrets.LLM_BACKUP_MODEL }}
+          BREEZE_API_KEY: ${{ secrets.BREEZE_API_KEY }}
+          BREEZE_API_SECRET: ${{ secrets.BREEZE_API_SECRET }}
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+          NW_LOCAL_FNO: /nonexistent
+        run: |
+          if [ "${{ steps.win.outputs.until }}" = "13:25" ] || [ ! -f state/levels.json ]; then python watch.py levels || true; fi
+          python watch.py run --until "${{ steps.win.outputs.until }}"
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: nwstate-${{ github.run_id }}
