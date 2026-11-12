@@ -135,7 +135,10 @@ class Nse:
 
 # ------------------------------------------------------------------ LLM gateway (OpenAI-compatible)
 
-def llm_chat(messages, max_tokens=700, timeout=90):
+LLM_STATS = {}   # model -> {"ok": n, "fail": n}, shown by /status
+
+
+def llm_chat(messages, max_tokens=700, timeout=90, models=None):
     url, key = secret("LLM_URL"), secret("LLM_KEY")
     if not (url and key):
         raise RuntimeError("no LLM credentials")
@@ -143,7 +146,7 @@ def llm_chat(messages, max_tokens=700, timeout=90):
     if not url.endswith("/completions"):
         url = url + ("/completions" if url.endswith("/chat") else "/chat/completions")
     import requests  # the gateway's Cloudflare front rejects urllib's default client (error 1010)
-    models = [m for m in (secret("LLM_MODEL", "deepseek-expert"), secret("LLM_BACKUP_MODEL")) if m]
+    models = models or [m for m in (secret("LLM_MODEL", "deepseek-expert"), secret("LLM_BACKUP_MODEL")) if m]
     last = None
     for m in models:
         try:
@@ -151,11 +154,14 @@ def llm_chat(messages, max_tokens=700, timeout=90):
                               json={"model": m, "temperature": 0, "max_tokens": max_tokens, "messages": messages})
             if r.status_code == 200:
                 j = r.json()
+                LLM_STATS.setdefault(m, {"ok": 0, "fail": 0})["ok"] += 1
                 return j["choices"][0]["message"]["content"] if "choices" in j else j.get("content", "")
+            LLM_STATS.setdefault(m, {"ok": 0, "fail": 0})["fail"] += 1
             last = f"{m} HTTP {r.status_code}"
             if r.status_code == 429:
                 break
         except (requests.RequestException, ValueError, KeyError) as e:
+            LLM_STATS.setdefault(m, {"ok": 0, "fail": 0})["fail"] += 1
             last = f"{m} {type(e).__name__}"
     raise RuntimeError(f"LLM failed: {last}")
 
@@ -187,11 +193,15 @@ class Bot:
         if self.dry:
             return True
         for chunk in [text[i:i + 3900] for i in range(0, len(text), 3900)]:
-            try:
-                self._call("sendMessage", {"chat_id": self.chat, "text": chunk, "parse_mode": "HTML",
-                                           "disable_web_page_preview": True})
-            except (urllib.error.URLError, OSError, ValueError) as e:
-                print("telegram send failed:", str(e)[:120], file=sys.stderr)
+            for attempt in range(4):   # connection resets happen; retry before giving up
+                try:
+                    self._call("sendMessage", {"chat_id": self.chat, "text": chunk, "parse_mode": "HTML",
+                                               "disable_web_page_preview": True})
+                    break
+                except (urllib.error.URLError, OSError, ValueError) as e:
+                    print(f"telegram send failed (try {attempt + 1}):", str(e)[:120], file=sys.stderr)
+                    time.sleep(3 * (attempt + 1))
+            else:
                 return False
         return True
 

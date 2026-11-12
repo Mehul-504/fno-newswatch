@@ -21,7 +21,7 @@ import time
 from datetime import datetime, time as dtime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import STATE, Bot, esc, load_json, log, now, save_json, secret  # noqa: E402
+from common import LLM_STATS, STATE, Bot, esc, load_json, log, now, save_json, secret  # noqa: E402
 import fno  # noqa: E402
 import grading  # noqa: E402
 import market as M  # noqa: E402
@@ -184,8 +184,9 @@ class Watch:
                           else f"❌ {esc(self.market.breeze_note)}. Alerts continue with NSE prices.")
         elif cmd == "/status":
             n = len(self.state.get("today", []))
+            ai = ", ".join(f"{m} {v['ok']} ok / {v['fail']} failed" for m, v in LLM_STATS.items()) or "no AI calls yet this run"
             self.bot.send(f"News watch running · {len(self.tg.ents)} channels + NSE filings\n"
-                          f"Prices: {self.market.mode()}\nAlerts today: {n}\nBudget per trade: ₹{self.budget:,.0f}")
+                          f"Prices: {self.market.mode()}\nAI reads: {ai}\nAlerts today: {n}\nBudget per trade: ₹{self.budget:,.0f}")
         elif cmd == "/digest":
             self.digest("on request")
         elif cmd in ("/help", "/start"):
@@ -211,8 +212,14 @@ class Watch:
         self.market.connect_breeze(breeze_token(self.state))
         names = self.tg.start()
         offset = int(self.state.get("bot_offset", 0))
-        self.bot.send(f"📡 News watch on — {len(names)} Telegram channels + NSE filings · {self.market.mode()}"
-                      + ("" if self.market.breeze else "\nSend /session &lt;id&gt; after your Breeze login for live Breeze prices."))
+        prev_end = self.state.get("last_run_end")
+        handover = prev_end and prev_end[:10] == self.day and now() - datetime.fromisoformat(prev_end) < timedelta(minutes=30)
+        start_msg = (f"📡 News watch on — {len(names)} Telegram channels + NSE filings · {self.market.mode()}"
+                     + ("" if self.market.breeze else "\nSend /session &lt;id&gt; after your Breeze login for live Breeze prices."))
+        if handover:
+            log("hand-over from the previous run: " + start_msg)   # no repeat message on every hand-over
+        else:
+            self.bot.send(start_msg)
         first, last_save, last_tg, last_nse = True, 0, 0, 0
         stop_at = datetime.combine(now().date(), until, tzinfo=now().tzinfo)
         while now() < stop_at:
@@ -237,11 +244,13 @@ class Watch:
                     self.state["digest_done"].append(d)
                     self.digest(d)
             if t - last_save > 120:
+                self.state["last_run_end"] = now().isoformat()
                 self.save()
                 last_save = t
             time.sleep(5)
+        self.state["last_run_end"] = now().isoformat()
         self.save()
-        log("stopped (time up)")
+        log("stopped (time up) · AI reads: " + json.dumps(LLM_STATS))
 
 
 def refresh_levels():

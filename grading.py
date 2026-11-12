@@ -6,7 +6,7 @@ read so alerts still go out.
 
 import re
 
-from common import first_json, llm_chat, log
+from common import first_json, llm_chat, log, secret
 
 RULES = """You read Indian stock-market news for a trader. For EACH company listed, judge ONLY from its news text.
 You do not know the share price and must not guess it.
@@ -52,9 +52,12 @@ def grade(items, uni):
     if not items:
         return {}
     lines = [f"- {s} ({uni[s]['name']}): {re.sub(r'\s+', ' ', c)[:600]}" for s, c in items]
+    conv = [{"role": "system", "content": RULES}, {"role": "user", "content": "Companies and their news:\n" + "\n".join(lines)}]
     try:
-        out = first_json(llm_chat([{"role": "system", "content": RULES},
-                                   {"role": "user", "content": "Companies and their news:\n" + "\n".join(lines)}]))
+        try:
+            out = first_json(llm_chat(conv))
+        except ValueError:   # a reply that is not valid JSON: ask the backup model once
+            out = first_json(llm_chat(conv, models=[m for m in (secret("LLM_BACKUP_MODEL"), secret("LLM_MODEL")) if m]))
         if isinstance(out, dict):
             out = [out]
         res = {}

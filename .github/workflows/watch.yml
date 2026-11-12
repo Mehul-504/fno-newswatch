@@ -1,17 +1,17 @@
 name: newswatch
-# Times are UTC (IST = UTC + 5:30). Three back-to-back windows cover 07:30-23:00 IST on weekdays; a run that starts
-# late still stops at its window's end, and the next one waits for it (concurrency group).
+# GitHub often starts scheduled runs late (hours, at busy times), so instead of fixed start times this is triggered
+# every 15 minutes, 07:00-23:00 IST on weekdays. Each run watches for up to 5h45m (stopping at 23:00 IST at the latest);
+# while one runs, the next trigger waits its turn (concurrency group), so there is always exactly one watcher and the
+# next one starts as soon as the current one ends. Triggers outside 07:00-23:00 IST exit straight away.
 on:
   schedule:
-    - cron: "0 2 * * 1-5"      # 07:30 IST -> 13:25 (pre-market news, opening, morning)
-    - cron: "50 7 * * 1-5"     # 13:20 IST -> 19:15 (afternoon, close, early results)
-    - cron: "40 13 * * 1-5"    # 19:10 IST -> 23:00 (evening results, next-day plans)
+    - cron: "*/15 1-17 * * 1-5"     # UTC; 06:30-23:15 IST, the run itself checks the 07:00-23:00 window
   workflow_dispatch:
     inputs:
-      until:
-        description: "stop time IST (HH:MM)"
+      minutes:
+        description: "how long to watch (minutes, max 345)"
         required: true
-        default: "15:40"
+        default: "345"
 
 concurrency:
   group: newswatch
@@ -20,32 +20,40 @@ concurrency:
 jobs:
   watch:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 358
     steps:
+      - name: Window
+        id: win
+        run: |
+          now=$(TZ=Asia/Kolkata date +%H%M)
+          mins="${{ github.event.inputs.minutes }}"; mins=${mins:-345}
+          if [ "$now" -lt 0700 ] || [ "$now" -ge 2300 ]; then echo "go=no" >> "$GITHUB_OUTPUT"; echo "outside 07:00-23:00 IST"; exit 0; fi
+          end=$(TZ=Asia/Kolkata date -d "+$mins minutes" +%H:%M)
+          if [ "$(TZ=Asia/Kolkata date -d "+$mins minutes" +%H%M)" -gt 2300 ] || [ "$(TZ=Asia/Kolkata date -d "+$mins minutes" +%d)" != "$(TZ=Asia/Kolkata date +%d)" ]; then end=23:00; fi
+          echo "go=yes" >> "$GITHUB_OUTPUT"; echo "until=$end" >> "$GITHUB_OUTPUT"; echo "watching until $end IST"
       - uses: actions/checkout@v4
+        if: steps.win.outputs.go == 'yes'
       - uses: actions/setup-python@v5
+        if: steps.win.outputs.go == 'yes'
         with:
           python-version: "3.12"
           cache: pip
-      - name: OCR for news images
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr
-      - run: pip install -r requirements.txt
+      - name: OCR for news images (optional)
+        if: steps.win.outputs.go == 'yes'
+        run: |
+          for i in 1 2; do sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr && break; sleep 20; done || true
+          command -v tesseract || echo "tesseract unavailable: image posts will be read from captions only"
+      - if: steps.win.outputs.go == 'yes'
+        run: pip install -r requirements.txt
       - name: Restore state (last message ids, today's alerts, Breeze session sealed with STATE_KEY)
+        if: steps.win.outputs.go == 'yes'
         uses: actions/cache/restore@v4
         with:
           path: state
           key: nwstate-${{ github.run_id }}
           restore-keys: nwstate-
-      - name: Window
-        id: win
-        run: |
-          s="${{ github.event.schedule }}"
-          if [ -n "${{ github.event.inputs.until }}" ]; then u="${{ github.event.inputs.until }}"
-          elif [ "$s" = "0 2 * * 1-5" ]; then u=13:25
-          elif [ "$s" = "50 7 * * 1-5" ]; then u=19:15
-          else u=23:00; fi
-          echo "until=$u" >> "$GITHUB_OUTPUT"
       - name: Watch
+        if: steps.win.outputs.go == 'yes'
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
@@ -61,10 +69,11 @@ jobs:
           STATE_KEY: ${{ secrets.STATE_KEY }}
           NW_LOCAL_FNO: /nonexistent
         run: |
-          if [ "${{ steps.win.outputs.until }}" = "13:25" ] || [ ! -f state/levels.json ]; then python watch.py levels || true; fi
+          mkdir -p state
+          if [ ! -f state/levels.json ] || [ "$(find state/levels.json -mmin +600 2>/dev/null)" ]; then python watch.py levels || true; fi
           python watch.py run --until "${{ steps.win.outputs.until }}"
       - name: Save state
-        if: always()
+        if: always() && steps.win.outputs.go == 'yes'
         uses: actions/cache/save@v4
         with:
           path: state
