@@ -266,6 +266,18 @@ class Tracker:
             f.write(json.dumps(r, default=str, ensure_ascii=False) + "\n")
 
     # ------------------------------------------------------------------ reports
+    def apply_choice(self, kind, n):
+        """Owner approved suggestion number n from the last report (kind 'mute' or 'unmute')."""
+        lst = self.state.get(f"suggest_{kind}") or []
+        if not (1 <= n <= len(lst)):
+            return f"No suggestion number {n}. Send /learn to see the current list."
+        k = lst[n - 1]
+        if kind == "mute":
+            self.muted[k] = dict(since=str(now().date()), by="owner")
+            return f"🔇 Muted {esc(k)}. Its alerts are now tracked silently; /unmute brings it back when suggested."
+        self.muted.pop(k, None)
+        return f"🔊 Un-muted {esc(k)}. Its alerts will be sent again."
+
     def muted_for(self, like):
         """Muted groups this would-be alert belongs to (like: dict with the same fields as a record)."""
         return [k for k in bucket_keys(like) if k in self.muted]
@@ -333,22 +345,34 @@ class Tracker:
         tags = Counter(t for r in self.history() for t in r.get("tags", []))
         if tags:
             lines.append("<b>Common mistakes</b>: " + "; ".join(f"{esc(t)} ×{n}" for t, n in tags.most_common(5)))
-        changes = []
+        changes, mute_s, unmute_s = [], [], []
+        for k, g in buckets.items():
+            s = stats(g)
+            if k not in self.muted and s["n"] >= MIN_N and s["pf"] < MUTE_PF and s["t"] < -1:
+                mute_s.append((k, s))
+            elif k in self.muted:
+                recent = [r for r in g if r["day"] >= self.muted[k]["since"] and not r["alerted"]][-MIN_N:]
+                if len(recent) >= MIN_N and stats(recent)["pf"] >= UNMUTE_PF:
+                    unmute_s.append((k, stats(recent)))
         if apply and self.mode == "auto":
-            for k, g in buckets.items():
-                s = stats(g)
-                alerted = [r for r in g if r["alerted"]]
-                if k not in self.muted and s["n"] >= MIN_N and s["pf"] < MUTE_PF and s["t"] < -1:
-                    self.muted[k] = dict(since=str(now().date()), n=s["n"], pf=round(s["pf"], 2))
-                    changes.append(f"🔇 muted {esc(k)} (n {s['n']}, PF {s['pf']:.2f}) — tracked silently from now")
-                elif k in self.muted:
-                    recent = [r for r in g if r["day"] >= self.muted[k]["since"] and not r["alerted"]][-MIN_N:]
-                    if len(recent) >= MIN_N and stats(recent)["pf"] >= UNMUTE_PF:
-                        del self.muted[k]
-                        changes.append(f"🔊 un-muted {esc(k)} (silent record recovered)")
+            for k, s in mute_s:
+                self.muted[k] = dict(since=str(now().date()), n=s["n"], pf=round(s["pf"], 2))
+                changes.append(f"🔇 muted {esc(k)} (n {s['n']}, PF {s['pf']:.2f}) — tracked silently from now")
+            for k, s in unmute_s:
+                del self.muted[k]
+                changes.append(f"🔊 un-muted {esc(k)} (silent record recovered)")
+        else:
+            # suggest only: numbered so the owner can approve with /mute N or /unmute N
+            self.state["suggest_mute"] = [k for k, _ in mute_s]
+            self.state["suggest_unmute"] = [k for k, _ in unmute_s]
+            for i, (k, s) in enumerate(mute_s, 1):
+                changes.append(f"💡 Suggest muting <b>{esc(k)}</b> (n {s['n']}, PF {s['pf']:.2f}) — reply /mute {i}")
+            for i, (k, s) in enumerate(unmute_s, 1):
+                changes.append(f"💡 Suggest un-muting <b>{esc(k)}</b> (silent PF {s['pf']:.2f}) — reply /unmute {i}")
         if changes:
             lines += changes
-        elif self.muted:
+        if self.muted:
             lines.append("Muted now: " + "; ".join(esc(k) for k in self.muted))
-        lines.append(f"<i>Muting needs {MIN_N}+ closed trades in a group and PF below {MUTE_PF}.</i>")
+        lines.append(f"<i>A group is suggested for muting after {MIN_N}+ closed trades with PF below {MUTE_PF}; "
+                     f"muted groups keep being tracked silently.</i>")
         return "\n".join(lines)

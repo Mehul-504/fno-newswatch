@@ -19,8 +19,9 @@ profitable — treat the news as "which stock, which side to watch", not as the 
 **Paper tracking and learning** (tracker.py): every alert, tip and filtered item becomes a one-lot paper trade with
 real NSE bid/ask; mistakes are tagged (late, false breakout, faded, never triggered, tip posted late, rule skip).
 Scorecard at 15:45 daily; lessons every Friday 16:00 (`/learn` any time). A group (channel, news type, strength,
-side, time of day, how far price had run, model agreement) with 30+ closed trades and PF below 0.8 is muted: its
-alerts become silent but keep being tracked, and it is un-muted when the silent record recovers.
+side, time of day, how far price had run, model agreement) with 30+ closed trades and PF below 0.8 is suggested
+for muting (config "learning": "suggest"); you approve with `/mute N` from the `/learn` list, and `/unmute N` when a
+muted group's silent record recovers. Muted alerts keep being tracked silently. ("learning": "auto" applies them itself.)
 Digests at 08:50, 15:40 and 21:00. Every graded item is logged to `state/alerts/<date>.jsonl` for later scoring.
 
 ## Run on the Mac

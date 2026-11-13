@@ -217,6 +217,9 @@ class Watch:
             self.bot.send(self.tracker.scorecard())
         elif cmd == "/learn":
             self.bot.send(self.tracker.learn(apply=False))
+        elif cmd in ("/mute", "/unmute") and len(parts) >= 2 and parts[1].isdigit():
+            self.bot.send(self.tracker.apply_choice(cmd[1:], int(parts[1])))
+            self.save()
         elif cmd == "/open":
             live = [r for r in self.tracker.recs if r["status"] in ("waiting", "open")]
             self.bot.send("📒 <b>Paper trades in play</b>\n" + ("\n".join(
@@ -226,7 +229,8 @@ class Watch:
         elif cmd in ("/help", "/start"):
             self.bot.send("Commands:\n/session &lt;Breeze session id&gt; — live Breeze prices for today\n"
                           "/status — what is running\n/digest — today's news so far\n/scorecard — today's paper results\n"
-                          "/open — paper trades in play\n/learn — lessons from all tracked trades\n/help — this list")
+                          "/open — paper trades in play\n/learn — lessons from all tracked trades\n"
+                          "/mute N, /unmute N — approve suggestion N from /learn\n/help — this list")
 
     def digest(self, label):
         rows = self.state.get("today", [])
