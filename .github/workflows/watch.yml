@@ -1,17 +1,22 @@
 name: newswatch
-# GitHub often starts scheduled runs late (hours, at busy times), so instead of fixed start times this is triggered
-# every 15 minutes, 07:00-23:00 IST on weekdays. Each run watches for up to 5h45m (stopping at 23:00 IST at the latest);
-# while one runs, the next trigger waits its turn (concurrency group), so there is always exactly one watcher and the
-# next one starts as soon as the current one ends. Triggers outside 07:00-23:00 IST exit straight away.
+# Self-chaining: every run first queues the next run (it waits in the concurrency group and starts the moment this one
+# ends or fails), so the watcher never depends on GitHub's cron, which fired hours late or not at all.
+#   07:00-23:00 IST  watch news (one run covers up to 5h45m)
+#   23:00-07:00 IST  one idle run waits for 07:00, so the morning start is guaranteed
+# The cron below is only a backup restarter in case the chain is ever broken.
 on:
   schedule:
-    - cron: "*/15 1-17 * * 1-5"     # UTC; 06:30-23:15 IST, the run itself checks the 07:00-23:00 window
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       minutes:
-        description: "how long to watch (minutes, max 345)"
+        description: "max minutes for this run (<= 345)"
         required: true
         default: "345"
+
+permissions:
+  actions: write
+  contents: read
 
 concurrency:
   group: newswatch
@@ -22,38 +27,50 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 358
     steps:
+      - name: Queue the next run (keeps the chain going)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run newswatch -R "${{ github.repository }}" -f minutes=345 || echo "could not queue the next run"
       - name: Window
         id: win
         run: |
-          now=$(TZ=Asia/Kolkata date +%H%M)
           mins="${{ github.event.inputs.minutes }}"; mins=${mins:-345}
-          if [ "$now" -lt 0700 ] || [ "$now" -ge 2300 ]; then echo "go=no" >> "$GITHUB_OUTPUT"; echo "outside 07:00-23:00 IST"; exit 0; fi
-          end=$(TZ=Asia/Kolkata date -d "+$mins minutes" +%H:%M)
-          if [ "$(TZ=Asia/Kolkata date -d "+$mins minutes" +%H%M)" -gt 2300 ] || [ "$(TZ=Asia/Kolkata date -d "+$mins minutes" +%d)" != "$(TZ=Asia/Kolkata date +%d)" ]; then end=23:00; fi
-          echo "go=yes" >> "$GITHUB_OUTPUT"; echo "until=$end" >> "$GITHUB_OUTPUT"; echo "watching until $end IST"
+          h=$(TZ=Asia/Kolkata date +%-H); m=$(TZ=Asia/Kolkata date +%-M); now=$((h * 60 + m))
+          if [ $now -ge 420 ] && [ $now -lt 1380 ]; then
+            end=$((now + mins)); [ $end -gt 1380 ] && end=1380
+            printf -v until "%02d:%02d" $((end / 60)) $((end % 60))
+            echo "mode=watch" >> "$GITHUB_OUTPUT"; echo "until=$until" >> "$GITHUB_OUTPUT"; echo "watching until $until IST"
+          else
+            if [ $now -ge 1380 ]; then wait=$((1440 - now + 420)); else wait=$((420 - now)); fi
+            [ $wait -gt $mins ] && wait=$mins
+            echo "mode=sleep" >> "$GITHUB_OUTPUT"; echo "wait=$wait" >> "$GITHUB_OUTPUT"; echo "overnight: waiting $wait minutes"
+          fi
+      - name: Overnight wait
+        if: steps.win.outputs.mode == 'sleep'
+        run: sleep $(( ${{ steps.win.outputs.wait }} * 60 ))
       - uses: actions/checkout@v4
-        if: steps.win.outputs.go == 'yes'
+        if: steps.win.outputs.mode == 'watch'
       - uses: actions/setup-python@v5
-        if: steps.win.outputs.go == 'yes'
+        if: steps.win.outputs.mode == 'watch'
         with:
           python-version: "3.12"
           cache: pip
       - name: OCR for news images (optional)
-        if: steps.win.outputs.go == 'yes'
+        if: steps.win.outputs.mode == 'watch'
         run: |
           for i in 1 2; do sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr && break; sleep 20; done || true
           command -v tesseract || echo "tesseract unavailable: image posts will be read from captions only"
-      - if: steps.win.outputs.go == 'yes'
+      - if: steps.win.outputs.mode == 'watch'
         run: pip install -r requirements.txt
       - name: Restore state (last message ids, today's alerts, Breeze session sealed with STATE_KEY)
-        if: steps.win.outputs.go == 'yes'
+        if: steps.win.outputs.mode == 'watch'
         uses: actions/cache/restore@v4
         with:
           path: state
           key: nwstate-${{ github.run_id }}
           restore-keys: nwstate-
       - name: Watch
-        if: steps.win.outputs.go == 'yes'
+        if: steps.win.outputs.mode == 'watch'
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
@@ -73,7 +90,7 @@ jobs:
           if [ ! -f state/levels.json ] || [ "$(find state/levels.json -mmin +600 2>/dev/null)" ]; then python watch.py levels || true; fi
           python watch.py run --until "${{ steps.win.outputs.until }}"
       - name: Save state
-        if: always() && steps.win.outputs.go == 'yes'
+        if: always() && steps.win.outputs.mode == 'watch'
         uses: actions/cache/save@v4
         with:
           path: state
