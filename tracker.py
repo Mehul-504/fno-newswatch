@@ -45,6 +45,10 @@ def bucket_keys(r):
             f"side: {r.get('side')}", f"alert time: {tod}", f"price had: {ran}", f"kind: {r.get('kind')}"]
     if r.get("model_agree") is not None:
         keys.append(f"daily model: {'agrees' if r['model_agree'] else 'disagrees'}")
+    if r.get("kind") == "breakout":
+        keys += [f"strike: {'out of the money' if 'out-of-the-money fallback' in r.get('tags', []) else 'in the money / ATM'}",
+                 f"breakout type: {r.get('bo_kind')}", f"breakout score: {'6-7' if (r.get('bo_score') or 0) >= 6 else '4-5' if (r.get('bo_score') or 0) >= 4 else '0-3'}/7",
+                 f"breakout source: {r.get('source')}"]
     return keys
 
 
@@ -81,6 +85,58 @@ class Tracker:
             r["tip"]["on"] = "stock"
         self.recs.append(r)
 
+    def add_breakout(self, sym, side, level, price, alerted, source, kind, score, start_next_day=False):
+        today = now().date()
+        day = next_weekday(today) if start_next_day else today
+        opt_side = "CE" if side == "up" else "PE"
+        rid = f"{day}|{sym}|{opt_side}|breakout"
+        if any(r["id"] == rid for r in self.recs):
+            return
+        r = dict(id=rid, day=str(day), sym=sym, side=opt_side, kind="breakout", alerted=bool(alerted), status="waiting",
+                 source=source, event_type=f"breakout ({kind})", strength=f"score {score}/7", headline=None,
+                 alert_t=now().isoformat(), alert_hm=now().strftime("%H:%M"), spot_at_alert=price, ran_atr=None,
+                 model_agree=None, tip=None, tags=[], level=float(level), bo_kind=kind, bo_score=int(score),
+                 hold_days=3, days_held=0)
+        self.recs.append(r)
+
+    def _breakout(self, r, t):
+        if t.time() < dtime(9, 30):
+            return
+        bars = self.m.series(r["sym"])
+        if not bars or bars[-1][0].date() != t.date():
+            return
+        px = bars[-1][3]
+        up = r["side"] == "CE"
+        if r["status"] == "waiting":
+            if r["day"] != str(t.date()):
+                return
+            beyond = px > r["level"] * 1.005 if up else px < r["level"] * 0.995
+            if beyond:
+                self._enter(r, px, bars[-1][0])
+                r["last_day"] = str(t.date())
+            elif t.time() > dtime(10, 30):
+                r.update(status="no_trigger", tags=r["tags"] + ["fell back behind the line before entry"])
+                self._score(r)
+            return
+        if r["status"] == "open":
+            if r.get("last_day") != str(t.date()):
+                r["days_held"] = r.get("days_held", 0) + 1
+                r["last_day"] = str(t.date())
+            et = datetime.fromisoformat(r["entry_t"])
+            et = et.replace(tzinfo=None) if et.tzinfo else et
+            for b in bars:
+                if b[0] <= et:
+                    continue
+                mv = (b[3] / r["entry_spot"] - 1) * (1 if up else -1)
+                r["best_move"] = max(r.get("best_move", 0), mv)
+                back = b[3] < r["level"] * 0.99 if up else b[3] > r["level"] * 1.01
+                if back:
+                    self._exit(r, b[3], b[0], "stop")
+                    return
+                if r["days_held"] >= r.get("hold_days", 3) - 1 and b[0].time() >= dtime(15, 15):
+                    self._exit(r, b[3], b[0], "time")
+                    return
+
     # ------------------------------------------------------------------ evaluation
     def _bars(self, sym, day_str):
         if day_str != str(now().date()):
@@ -89,6 +145,10 @@ class Tracker:
 
     def _enter(self, r, spot, when):
         opt = self.m.pick_option(r["sym"], r["side"], self.budget)
+        if not opt.get("strike") and opt.get("otm"):
+            o = opt["otm"]   # the alert's "nearest affordable" strike: track it so OTM gets judged too
+            opt = dict(opt, strike=o["strike"], ask=o["ask"], px=o["px"], delta=o["delta"])
+            r["tags"].append("out-of-the-money fallback")
         if not opt.get("strike"):
             r.update(status="no_option", tags=r["tags"] + ["no strike within budget"])
             return
@@ -115,6 +175,8 @@ class Tracker:
                 r["tags"].append("faded (was up, gave it back)")
             if (r.get("ran_atr") or 0) > 1:
                 r["tags"].append("late (price had already run > 1 ATR)")
+            if r.get("kind") == "breakout" and reason == "stop":
+                r["tags"].append("failed breakout (back behind the line)")
         self._score(r)
 
     def _rule(self, r, t):
@@ -220,7 +282,15 @@ class Tracker:
         today = str(t.date())
         tip_round = (t.timestamp() - self.last_tip_poll) >= 290
         for r in self.recs:
-            if r["day"] != today or r["status"] not in ("waiting", "open"):
+            if r["status"] not in ("waiting", "open"):
+                continue
+            if r["kind"] == "breakout":
+                try:
+                    self._breakout(r, t)
+                except Exception as e:
+                    log(f"tracker {r['id']}: {str(e)[:80]}")
+                continue
+            if r["day"] != today:
                 continue
             try:
                 if r["kind"] == "tip":
@@ -237,6 +307,11 @@ class Tracker:
         """At 15:16: anything still open exits at the current price; still-waiting rule trades never triggered."""
         t = now()
         for r in self.recs:
+            if r["kind"] == "breakout":
+                if r["status"] == "waiting" and r["day"] == str(t.date()):
+                    r.update(status="no_trigger", tags=r["tags"] + ["never triggered"])
+                    self._score(r)
+                continue
             if r["day"] != str(t.date()):
                 continue
             if r["status"] == "open":
@@ -257,7 +332,7 @@ class Tracker:
         """Keep only today's and future records in the live state (closed ones are in scores.jsonl)."""
         today = str(now().date())
         self.recs[:] = [r for r in self.recs if r["day"] >= today and r["status"] in ("waiting", "open")
-                        or r["day"] == today]
+                        or r["day"] == today or (r["kind"] == "breakout" and r["status"] == "open")]
         self.state["paper"] = self.recs
 
     def _score(self, r):

@@ -18,7 +18,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, time as dtime, timedelta
+from datetime import datetime, time as dtime, timedelta  # noqa: F401
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import LLM_STATS, STATE, Bot, esc, load_json, log, now, save_json, secret  # noqa: E402
@@ -28,6 +28,7 @@ import market as M  # noqa: E402
 import sources  # noqa: E402
 import suggest  # noqa: E402
 import tracker  # noqa: E402
+import breakouts as BO  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = load_json(os.path.join(HERE, "config.json"), {})
@@ -215,6 +216,12 @@ class Watch:
             self.digest("on request")
         elif cmd == "/scorecard":
             self.bot.send(self.tracker.scorecard())
+        elif cmd == "/watchlist":
+            w = self.state.get("bo_watch") or {}
+            items = sorted((w.get("items") or {}).items(), key=lambda kv: kv[1]["gap"])
+            self.bot.send(f"🎯 <b>Breakout watchlist for {w.get('day', '-')}</b>\n" + ("\n".join(
+                f"{esc(s)} {'↑' if it['side'] == 'up' else '↓'} ₹{it['level']:,.1f} ({it['gap'] * 100:.1f}% away, {int(it['touches'])} touches)"
+                for s, it in items) or "empty — the list is built each evening"))
         elif cmd == "/learn":
             self.bot.send(self.tracker.learn(apply=False))
         elif cmd in ("/mute", "/unmute") and len(parts) >= 2 and parts[1].isdigit():
@@ -230,7 +237,87 @@ class Watch:
             self.bot.send("Commands:\n/session &lt;Breeze session id&gt; — live Breeze prices for today\n"
                           "/status — what is running\n/digest — today's news so far\n/scorecard — today's paper results\n"
                           "/open — paper trades in play\n/learn — lessons from all tracked trades\n"
-                          "/mute N, /unmute N — approve suggestion N from /learn\n/help — this list")
+                          "/mute N, /unmute N — approve suggestion N from /learn\n"
+                          "/watchlist — today's chart-breakout watchlist\n/help — this list")
+
+    # ------------------------------------------------------------------ chart breakouts
+    def _store(self):
+        if getattr(self, "bo_store_day", None) != self.day:
+            self.bo_store, self.bo_store_day = BO.load_store(), self.day
+        return self.bo_store
+
+    def evening_scan(self):
+        """After NSE publishes the day's prices: breakouts on closing prices, watch-only list, tomorrow's watchlist."""
+        BO.update_store(300)
+        store = BO.load_store()
+        latest = max(x["days"][-1] for x in store.values()) if store else None
+        if str(latest) != self.day:
+            log("evening scan: today's NSE file not published yet")
+            return False
+        self.bo_store, self.bo_store_day = store, self.day
+        ev, watch = BO.scan(store, set(self.uni))
+        fno_ev = sorted([e for e in ev if e["fno"]], key=lambda e: (-e["score"], -e["touches"]))
+        cash = sorted([e for e in ev if not e["fno"] and e["turnover_cr"] >= 5 and e["close"] >= 20],
+                      key=lambda e: (-e["score"], -e["turnover_cr"]))
+        name = {"trendline": "trendline", "flat": "flat top"}
+        lines = [f"📈 <b>Chart breakouts — {latest:%d %b}</b> (closing prices, daily chart)"]
+        if fno_ev:
+            lines.append("<b>F&amp;O</b> — paper-tracked from 9:30 tomorrow if still past the line:")
+        for e in fno_ev[:12]:
+            icon = "🟢" if e["side"] == "up" else "🔴"
+            kind = name[e["kind"]] if e["side"] == "up" else ("rising trendline" if e["kind"] == "trendline" else "flat bottom") + " broken"
+            lines.append(f"{icon} <b>{esc(e['sym'])}</b> {kind} ₹{e['level']:,.1f} → close ₹{e['close']:,.1f} · "
+                         f"{e['touches']} touches, {e['span']} days · score {e['score']}/7 · {esc(e['checks']['volume'])} · "
+                         f"{esc(e['checks']['room'])}")
+            self.tracker.add_breakout(e["sym"], e["side"], e["level"], e["close"], True, "evening scan", e["kind"],
+                                      e["score"], start_next_day=True)
+        if not fno_ev:
+            lines.append("No F&amp;O breakouts today.")
+        if cash:
+            lines.append("\n<b>Watch-only (not F&amp;O, turnover ₹5 cr+)</b>:")
+            lines += [f"{'🟢' if e['side'] == 'up' else '🔴'} {esc(e['sym'])} {name[e['kind']]} ₹{e['level']:,.1f} → "
+                      f"₹{e['close']:,.1f} · score {e['score']}/7 · ₹{e['turnover_cr']:,.0f} cr" for e in cash[:15]]
+        nxt = sorted(watch.items(), key=lambda kv: kv[1]["gap"])[:30]
+        if nxt:
+            lines.append("\n🎯 <b>Tomorrow's F&amp;O watchlist</b> — alert the moment the line breaks:")
+            lines.append(" · ".join(f"{esc(s)} {'↑' if w['side'] == 'up' else '↓'}₹{w['level']:,.1f} ({w['gap'] * 100:.1f}%)" for s, w in nxt))
+        self.bot.send("\n".join(lines))
+        self.state["bo_watch"] = {"day": str(tracker.next_weekday(now().date())),
+                                  "items": {s: {k: (float(v) if isinstance(v, (int, float)) or hasattr(v, "item") else v)
+                                                for k, v in w.items()} for s, w in nxt}}
+        self.state["bo_alerted"] = []
+        return True
+
+    def live_breakouts(self):
+        w = self.state.get("bo_watch") or {}
+        if w.get("day") != self.day or not (dtime(9, 30) <= now().time() <= dtime(15, 0)):
+            return
+        done = self.state.setdefault("bo_alerted", [])
+        for sym, it in (w.get("items") or {}).items():
+            if sym in done:
+                continue
+            bars = self.market.series(sym)
+            if not bars:
+                continue
+            px, up = bars[-1][3], it["side"] == "up"
+            if not ((px > it["level"] * 1.005) if up else (px < it["level"] * 0.995)):
+                continue
+            done.append(sym)
+            s = self._store().get(sym)
+            checks, score = BO.live_checks(s, it["side"], px, it["level"], it) if s else ([], 0)
+            opt = self.market.pick_option(sym, "CE" if up else "PE", self.budget)
+            kind = ("falling trendline" if up else "rising trendline") if it["kind"] == "trendline" else ("flat top" if up else "flat bottom")
+            stop = it["level"] * (0.99 if up else 1.01)
+            lines = [f"{'📈' if up else '📉'} <b>{'BREAKOUT' if up else 'BREAKDOWN'} · {esc(sym)}</b> · {kind} "
+                     f"({int(it['touches'])} touches, {int(it['span'])} days) · {now():%H:%M}",
+                     f"Broke ₹{it['level']:,.1f} → now ₹{px:,.1f} ({abs(px / it['level'] - 1) * 100:.1f}% past the line)",
+                     "📐 " + " · ".join(f"{'✅' if ok else '⚠️'} {esc(t)}" for ok, t in checks) + f" → {score}/{len(checks)}"
+                     + ("" if self.market.breeze else " · volume needs Breeze"),
+                     f"<b>Plan {'CE' if up else 'PE'}:</b> buy now or on a dip back to ₹{it['level']:,.1f}; stop if it closes back "
+                     f"{'below' if up else 'above'} ₹{stop:,.1f}; hold up to 3 days."]
+            lines += suggest.plan_text(sym, "CE" if up else "PE", {}, opt, self.budget)[-1:]
+            self.bot.send("\n".join(lines))
+            self.tracker.add_breakout(sym, it["side"], it["level"], px, True, "live breakout", it["kind"], score + 2)
 
     def digest(self, label):
         rows = self.state.get("today", [])
@@ -275,6 +362,10 @@ class Watch:
                 last_nse = t
             if t - last_trk >= 120:
                 self.tracker.update()
+                try:
+                    self.live_breakouts()
+                except Exception as e:
+                    log(f"live breakouts: {str(e)[:80]}")
                 last_trk = t
             hm0 = now().strftime("%H:%M")
             done = self.state.setdefault("digest_done", [])
@@ -284,6 +375,13 @@ class Watch:
             if "15:45" <= hm0 < "16:30" and "score" not in done:
                 self.bot.send(self.tracker.scorecard())
                 done.append("score")
+            if now().weekday() < 5 and hm0 >= "19:15" and "bo_scan" not in done and t - getattr(self, "bo_try", 0) > 900:
+                self.bo_try = t
+                try:
+                    if self.evening_scan():
+                        done.append("bo_scan")
+                except Exception as e:
+                    log(f"evening scan failed: {str(e)[:100]}")
             if now().weekday() == 4 and "16:00" <= hm0 < "17:00" and "learn" not in done:
                 self.bot.send(self.tracker.learn(apply=True))
                 done.append("learn")

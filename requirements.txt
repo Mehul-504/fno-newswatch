@@ -1,3 +1,4 @@
 telethon==1.45.0
 requests==2.34.2
 breeze-connect==1.0.69
+numpy==2.2.6

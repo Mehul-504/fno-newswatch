@@ -24,6 +24,14 @@ for muting (config "learning": "suggest"); you approve with `/mute N` from the `
 muted group's silent record recovers. Muted alerts keep being tracked silently. ("learning": "auto" applies them itself.)
 Digests at 08:50, 15:40 and 21:00. Every graded item is logged to `state/alerts/<date>.jsonl` for later scoring.
 
+**Chart breakouts** (breakouts.py): every evening after NSE publishes prices (~19:15) it scans all ~2,800 NSE
+stocks' daily charts for falling-trendline and flat-top breakouts and rising-trendline / flat-bottom breakdowns
+(swing points 5 bars each side, 2+ touches, 30+ days, no close beyond the line in between), scores each on 7 checks
+(volume, close location, 20/50 EMA, 200 EMA, RSI, room to the next level, distance past the line) and sends:
+F&O breakouts (paper-tracked from 9:30 next day, up to 3 days), a watch-only list of liquid non-F&O stocks, and the
+next day's F&O watchlist (within 3% of a line). During market hours the watchlist is checked every 2 minutes and a
+live alert goes out the moment a line breaks. `/watchlist` shows it. Daily prices are kept in state/bhav (~300 days).
+
 ## Run on the Mac
     ../.venv/bin/python watch.py run --until 15:40          # live alerts
     ../.venv/bin/python watch.py once --dry --backfill 90   # test: last 90 minutes, print only
