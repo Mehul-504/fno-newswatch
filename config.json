@@ -10,5 +10,6 @@
   "alert_weak_news": true,
   "duplicate_hours": 1,
   "digests": ["08:50", "15:40", "21:00"],
-  "backfill_minutes_on_start": 30
+  "backfill_minutes_on_start": 30,
+  "learning": "auto"
 }

@@ -21,6 +21,9 @@ Return a JSON array with one object per company, keys exactly:
   "surprise": "beat", "miss", "inline" or "unknown" (results vs estimates)
   "confidence": "high", "medium" or "low"
   "headline": the news in plain English, at most 14 words (translate Hindi)
+  "tip": only when event_type is "tip/call", else null: {"right": "CE", "PE", "FUT" or "STOCK", "strike": number or null,
+         "entry": number or null (the "buy above"/"buy at" price of what is named: option premium for an option call,
+         share price for a stock call), "target": first target number or null, "stop": stop-loss number or null}
 
 Rules:
 - Results: strong when clearly better/worse than estimates (5%+ on profit or EBITDA) or a very large YoY profit change
@@ -47,6 +50,22 @@ def fallback(sym, text):
                 confidence="low", headline=head, by="keywords")
 
 
+def clean_tip(t):
+    """Tip levels from the AI, numbers only; None if the post gives none."""
+    if not isinstance(t, dict):
+        return None
+    def num(x):
+        try:
+            v = float(str(x).replace(",", "").replace("₹", "").strip())
+            return v if v > 0 else None
+        except (TypeError, ValueError):
+            return None
+    right = str(t.get("right") or "").upper()
+    out = dict(right=right if right in ("CE", "PE", "FUT", "STOCK") else None, strike=num(t.get("strike")),
+               entry=num(t.get("entry")), target=num(t.get("target")), stop=num(t.get("stop")))
+    return out if any(out[k] for k in ("entry", "target", "stop", "strike")) else None
+
+
 def grade(items, uni):
     """items: [(sym, context)] from one post -> {sym: grade}."""
     if not items:
@@ -69,7 +88,8 @@ def grade(items, uni):
             res[s] = dict(sym=s, direction=d if d in (-1, 0, 1) else 0,
                           strength=o.get("strength") if o.get("strength") in ("strong", "weak") and d else "none",
                           event_type=str(o.get("event_type", "other"))[:30], surprise=str(o.get("surprise", "unknown"))[:10],
-                          confidence=str(o.get("confidence", "low"))[:8], headline=str(o.get("headline", ""))[:140], by="ai")
+                          confidence=str(o.get("confidence", "low"))[:8], headline=str(o.get("headline", ""))[:140], by="ai",
+                          tip=clean_tip(o.get("tip")))
         for s, c in items:
             res.setdefault(s, fallback(s, c))
         return res

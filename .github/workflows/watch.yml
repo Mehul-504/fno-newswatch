@@ -89,6 +89,13 @@ jobs:
           mkdir -p state
           if [ ! -f state/levels.json ] || [ "$(find state/levels.json -mmin +600 2>/dev/null)" ]; then python watch.py levels || true; fi
           python watch.py run --until "${{ steps.win.outputs.until }}"
+      - name: Keep a copy of the paper-trade results (downloadable for 90 days)
+        if: always() && steps.win.outputs.mode == 'watch' && hashFiles('state/scores.jsonl') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: scores-${{ github.run_id }}
+          path: state/scores.jsonl
+          retention-days: 90
       - name: Save state
         if: always() && steps.win.outputs.mode == 'watch'
         uses: actions/cache/save@v4

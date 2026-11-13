@@ -100,6 +100,51 @@ class Market:
         self.cache[sym] = (time.monotonic(), snap)
         return snap
 
+    def series(self, sym, max_age=90):
+        """Today's minute bars [(datetime, high, low, close)] from Breeze if working, else NSE (close only)."""
+        key = ("series", sym)
+        hit = self.cache.get(key)
+        if hit and time.monotonic() - hit[0] < max_age:
+            return hit[1]
+        bars = []
+        if self.breeze:
+            try:
+                bars = [(t, h, l, c) for t, h, l, c, v in self._breeze_bars(sym)]
+            except Exception:
+                bars = []
+        if not bars:
+            try:
+                pts, _ = self.nse.chart(sym)
+                bars = [(t, p, p, p) for t, p in pts]
+            except Exception:
+                bars = []
+        self.cache[key] = (time.monotonic(), bars)
+        return bars
+
+    def option_quote(self, sym, expiry, strike, right, max_age=50):
+        """Live bid / ask / last price of one option from NSE's chain (cached briefly per stock and expiry)."""
+        key = ("chain", sym, str(expiry))
+        hit = self.cache.get(key)
+        if not hit or time.monotonic() - hit[0] > max_age:
+            try:
+                self.cache[key] = hit = (time.monotonic(), self.nse.chain(sym, expiry))
+            except Exception:
+                return None
+        spot, rows = hit[1]
+        for r in rows:
+            if abs(r["strike"] - strike) < 1e-6:
+                leg = r[right]
+                return dict(bid=leg["bid"], ask=leg["ask"], ltp=leg["ltp"], spot=spot)
+        return None
+
+    def nearest_expiry(self, sym, min_days=0):
+        try:
+            today = now().date()
+            ex = [e for e in self.nse.expiries(sym) if (e - today).days >= min_days]
+            return ex[0] if ex else None
+        except Exception:
+            return None
+
     # -------------------------------------------------------------- option choice
     def pick_option(self, sym, right, budget):
         lot = (self.uni.get(sym) or {}).get("lot") or 0

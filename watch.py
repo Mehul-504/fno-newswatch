@@ -27,6 +27,7 @@ import grading  # noqa: E402
 import market as M  # noqa: E402
 import sources  # noqa: E402
 import suggest  # noqa: E402
+import tracker  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = load_json(os.path.join(HERE, "config.json"), {})
@@ -115,6 +116,8 @@ class Watch:
         if self.state.get("day") != self.day:
             self.state.update(day=self.day, sent={}, recent={}, digest_done=[], today=[])
         self.ranks = model_ranks()
+        self.tracker = tracker.Tracker(self.state, self.market, self.uni, self.budget, CFG.get("learning", "auto"))
+        self.tracker.roll()
 
     def save(self):
         save_json(STATE_FILE, self.state)
@@ -148,28 +151,49 @@ class Watch:
             row = dict(t=now(), post_time=post["ts"], source=post["source"], text=ctx[:500], **g)
             if post["source"].lower() in self.tips:
                 g["event_type"] = "tip/call"
-            weak_noise = g["strength"] == "weak" and (g["event_type"] not in MEANINGFUL or PRICE_TALK.search(ctx))
-            if g["direction"] == 0 or weak_noise or (g["strength"] == "weak" and not CFG.get("alert_weak_news", True)):
-                self.log_item(dict(row, alerted=False, why="no direction / price talk / weak non-event"))
-                continue
-            tag = f"{s}|{g['direction']}"
-            last = self.state["sent"].get(tag)
-            if last and now() - datetime.fromisoformat(last["t"]) < timedelta(hours=CFG.get("duplicate_hours", 1)) \
-                    and not (g["strength"] == "strong" and last.get("strength") != "strong"):
-                self.log_item(dict(row, alerted=False, duplicate_of=last["t"]))
+            if g["direction"] == 0:
+                self.log_item(dict(row, alerted=False, why="no direction"))
                 continue
             snap = self.market.snapshot(s)
-            if price_mismatch(ctx, snap.get("spot") or snap.get("pc")):
+            ref = snap.get("spot") or snap.get("pc")
+            tip = g.get("tip") or {}
+            tip_off = ref and tip.get("right") in (None, "STOCK", "FUT") and any(
+                tip.get(k) and abs(tip[k] / ref - 1) > 0.15 for k in ("entry", "target", "stop"))
+            if price_mismatch(ctx, ref) or tip_off:
                 self.log_item(dict(row, alerted=False, why="price in post does not match this stock"))
                 continue
-            opt = self.market.pick_option(s, "CE" if g["direction"] > 0 else "PE", self.budget)
-            msg = suggest.alert(s, g, post, 0, snap, opt, self.budget, self.ranks.get(s), self.market.mode())
-            self.bot.send(msg)
-            self.state["sent"][tag] = {"t": now().isoformat(), "strength": g["strength"]}
-            self.state.setdefault("today", []).append(dict(sym=s, dir=g["direction"], strength=g["strength"],
-                                                           event=g["event_type"], head=g.get("headline"), t=f"{now():%H:%M}"))
-            self.log_item(dict(row, alerted=True, snap=snap, option={k: v for k, v in opt.items() if k != "atm"}))
-            sent += 1
+            side = "CE" if g["direction"] > 0 else "PE"
+            why = None
+            if g["strength"] == "weak" and (g["event_type"] not in MEANINGFUL or PRICE_TALK.search(ctx)):
+                why = "price talk / weak non-event"
+            elif g["strength"] == "weak" and not CFG.get("alert_weak_news", True):
+                why = "weak news switched off"
+            tag = f"{s}|{g['direction']}"
+            last = self.state["sent"].get(tag)
+            if not why and last and now() - datetime.fromisoformat(last["t"]) < timedelta(hours=CFG.get("duplicate_hours", 1)) \
+                    and not (g["strength"] == "strong" and last.get("strength") != "strong"):
+                why = "duplicate within the hour"
+            if not why:
+                like = dict(source=post["source"], event_type=g["event_type"], strength=g["strength"], side=side,
+                            alert_hm=now().strftime("%H:%M"), kind="tip" if g["event_type"] == "tip/call" and g.get("tip") else "rule",
+                            ran_atr=abs(snap["spot"] - snap["pc"]) / snap["atr"] if snap.get("spot") and snap.get("pc") and snap.get("atr") else None)
+                m = self.tracker.muted_for(like)
+                if m:
+                    why = "muted by learning: " + ", ".join(m)
+            opt = {}
+            if why:
+                self.log_item(dict(row, alerted=False, why=why))
+            else:
+                opt = self.market.pick_option(s, side, self.budget)
+                msg = suggest.alert(s, g, post, 0, snap, opt, self.budget, self.ranks.get(s), self.market.mode())
+                self.bot.send(msg)
+                self.state["sent"][tag] = {"t": now().isoformat(), "strength": g["strength"]}
+                self.state.setdefault("today", []).append(dict(sym=s, dir=g["direction"], strength=g["strength"],
+                                                               event=g["event_type"], head=g.get("headline"), t=f"{now():%H:%M}"))
+                self.log_item(dict(row, alerted=True, snap=snap, option={k: v for k, v in opt.items() if k not in ("atm", "otm")}))
+                sent += 1
+            if why != "duplicate within the hour":
+                self.tracker.add(s, g, post, snap, opt, alerted=not why, model_rank=self.ranks.get(s))
         return sent
 
     def command(self, text):
@@ -189,9 +213,20 @@ class Watch:
                           f"Prices: {self.market.mode()}\nAI reads: {ai}\nAlerts today: {n}\nBudget per trade: ₹{self.budget:,.0f}")
         elif cmd == "/digest":
             self.digest("on request")
+        elif cmd == "/scorecard":
+            self.bot.send(self.tracker.scorecard())
+        elif cmd == "/learn":
+            self.bot.send(self.tracker.learn(apply=False))
+        elif cmd == "/open":
+            live = [r for r in self.tracker.recs if r["status"] in ("waiting", "open")]
+            self.bot.send("📒 <b>Paper trades in play</b>\n" + ("\n".join(
+                f"{'🟡' if r['status'] == 'waiting' else '🟢'} {esc(r['sym'])} {r['side']} {r['kind']} · {r['status']}"
+                + (f" · in at {r.get('entry_opt')} ({r.get('strike')})" if r["status"] == "open" else "") for r in live)
+                or "none"))
         elif cmd in ("/help", "/start"):
             self.bot.send("Commands:\n/session &lt;Breeze session id&gt; — live Breeze prices for today\n"
-                          "/status — what is running\n/digest — today's news so far\n/help — this list")
+                          "/status — what is running\n/digest — today's news so far\n/scorecard — today's paper results\n"
+                          "/open — paper trades in play\n/learn — lessons from all tracked trades\n/help — this list")
 
     def digest(self, label):
         rows = self.state.get("today", [])
@@ -220,7 +255,7 @@ class Watch:
             log("hand-over from the previous run: " + start_msg)   # no repeat message on every hand-over
         else:
             self.bot.send(start_msg)
-        first, last_save, last_tg, last_nse = True, 0, 0, 0
+        first, last_save, last_tg, last_nse, last_trk = True, 0, 0, 0, 0
         stop_at = datetime.combine(now().date(), until, tzinfo=now().tzinfo)
         while now() < stop_at:
             t = time.monotonic()
@@ -234,6 +269,20 @@ class Watch:
                 for p in self.filings.poll(since):
                     self.handle(p)
                 last_nse = t
+            if t - last_trk >= 120:
+                self.tracker.update()
+                last_trk = t
+            hm0 = now().strftime("%H:%M")
+            done = self.state.setdefault("digest_done", [])
+            if "15:16" <= hm0 < "15:40" and "close" not in done:
+                self.tracker.close_day()
+                done.append("close")
+            if "15:45" <= hm0 < "16:30" and "score" not in done:
+                self.bot.send(self.tracker.scorecard())
+                done.append("score")
+            if now().weekday() == 4 and "16:00" <= hm0 < "17:00" and "learn" not in done:
+                self.bot.send(self.tracker.learn(apply=True))
+                done.append("learn")
             offset, cmds = self.bot.commands(offset)
             for c in cmds:
                 self.command(c)
