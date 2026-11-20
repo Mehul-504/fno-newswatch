@@ -14,7 +14,14 @@ green (red) and price breaks its high (low); stop at the other side; exit by 15:
 strike whose lot costs at most ₹20,000, with its live ask and spread. News direction on its own did not test
 profitable — treat the news as "which stock, which side to watch", not as the entry.
 
-**Bot commands** (your chat only): `/session <id>`, `/status`, `/digest`, `/scorecard`, `/open`, `/learn`, `/help`.
+**Bot commands** (your chat only): `/session <id>`, `/status`, `/digest`, `/scorecard`, `/open`, `/learn`, `/mute N`,
+`/unmute N`, `/watchlist`, `/channel`, `/help`.
+
+**Sharing with others** — a private Telegram channel: create the channel, add the bot as an admin with "Post
+messages" allowed (you must be the one who adds it). The bot links it, posts a short not-advice note and from then
+on posts alerts, breakouts, digests and the daily scorecard there; invite people with the channel's invite link.
+Commands and the Friday lessons stay in your private chat. If it does not link, forward any channel post to the
+bot. `/channel off` sends alerts back to your chat.
 
 **Paper tracking and learning** (tracker.py): every alert, tip and filtered item becomes a one-lot paper trade with
 real NSE bid/ask; mistakes are tagged (late, false breakout, faded, never triggered, tip posted late, rule skip).

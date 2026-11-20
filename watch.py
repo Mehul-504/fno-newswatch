@@ -105,6 +105,8 @@ class Watch:
         self.state = load_json(STATE_FILE, {})
         self.uni = fno.load()
         self.bot = Bot(dry_run=dry)
+        if (self.state.get("channel") or {}).get("id"):
+            self.bot.channel = self.state["channel"]["id"]
         self.market = M.Market(self.uni, load_json(os.path.join(STATE, "levels.json"), {}))
         chans = list(CFG.get("news_channels", []))
         self.tips = {c.lower() for c in CFG.get("tip_channels", [])}
@@ -122,6 +124,32 @@ class Watch:
 
     def save(self):
         save_json(STATE_FILE, self.state)
+
+    INTRO = ("📡 <b>F&amp;O alerts</b> will be posted here: news on F&amp;O stocks, chart breakouts, digests and the daily "
+             "paper-trade scorecard.\n<i>Paper-trading notes for learning only — not investment advice. Nothing here is "
+             "a recommendation to buy or sell; check your own chart and risk before any trade.</i>")
+
+    def channel_event(self, ev):
+        """The owner added the bot to a channel as admin (or forwarded one of its posts): make it the alert channel."""
+        cur = self.state.get("channel") or {}
+        if ev["op"] == "removed":
+            if ev["id"] == cur.get("id"):
+                self.state.pop("channel", None)
+                self.bot.channel = str(secret("TELEGRAM_CHANNEL_ID") or "")
+                self.save()
+                self.bot.send(f"⚠️ The bot was removed from <b>{esc(ev['title'])}</b> — alerts come to this chat again.")
+            return
+        if ev["id"] == cur.get("id"):
+            return
+        if not self.bot.send(self.INTRO, ev["id"]):
+            self.bot.send(f"❌ Could not post in <b>{esc(ev['title'] or ev['id'])}</b>. Make the bot an admin there with "
+                          f"'Post messages' allowed, then forward any post from it here again.")
+            return
+        self.state["channel"] = {"id": ev["id"], "title": ev["title"]}
+        self.bot.channel = ev["id"]
+        self.save()
+        self.bot.send(f"✅ Alerts will now go to <b>{esc(ev['title'] or ev['id'])}</b>. Commands (/session, /mute, …) still "
+                      f"work only here in this chat. /channel off sends alerts back here.")
 
     def log_item(self, row):
         path = os.path.join(STATE, "alerts", f"{self.day}.jsonl")
@@ -187,7 +215,7 @@ class Watch:
             else:
                 opt = self.market.pick_option(s, side, self.budget)
                 msg = suggest.alert(s, g, post, 0, snap, opt, self.budget, self.ranks.get(s), self.market.mode())
-                self.bot.send(msg)
+                self.bot.post(msg)
                 self.state["sent"][tag] = {"t": now().isoformat(), "strength": g["strength"]}
                 self.state.setdefault("today", []).append(dict(sym=s, dir=g["direction"], strength=g["strength"],
                                                                event=g["event_type"], head=g.get("headline"), t=f"{now():%H:%M}"))
@@ -238,7 +266,19 @@ class Watch:
                           "/status — what is running\n/digest — today's news so far\n/scorecard — today's paper results\n"
                           "/open — paper trades in play\n/learn — lessons from all tracked trades\n"
                           "/mute N, /unmute N — approve suggestion N from /learn\n"
-                          "/watchlist — today's chart-breakout watchlist\n/help — this list")
+                          "/watchlist — today's chart-breakout watchlist\n"
+                          "/channel — where alerts go · /channel off — back to this chat\n/help — this list")
+        elif cmd == "/channel":
+            if len(parts) >= 2 and parts[1].lower() == "off":
+                self.state.pop("channel", None)
+                self.bot.channel = str(secret("TELEGRAM_CHANNEL_ID") or "")
+                self.save()
+                self.bot.send("Alerts come to this chat again" + (" (the TELEGRAM_CHANNEL_ID secret still names a channel)." if self.bot.channel else "."))
+            else:
+                c = self.state.get("channel") or {}
+                self.bot.send(f"Alerts go to <b>{esc(c.get('title') or self.bot.channel)}</b>. Commands work only here." if self.bot.channel
+                              else "Alerts come to this chat. To use a channel: add this bot to it as an admin (allow "
+                                   "'Post messages'). If nothing happens, forward any post from the channel here.")
 
     # ------------------------------------------------------------------ chart breakouts
     def _store(self):
@@ -287,7 +327,7 @@ class Watch:
         if nxt:
             lines.append(f"\n🎯 <b>{nxt_day.capitalize()}'s F&amp;O watchlist</b> — alert the moment the line breaks:")
             lines.append(" · ".join(f"{esc(s)}{' 📦' if w['kind'] == 'box' else ''} {'↑' if w['side'] == 'up' else '↓'}₹{w['level']:,.1f} ({w['gap'] * 100:.1f}%)" for s, w in nxt))
-        self.bot.send("\n".join(lines))
+        self.bot.post("\n".join(lines))
         self.state["bo_watch"] = {"day": str(tracker.next_weekday(now().date())),
                                   "items": {s: {k: (float(v) if isinstance(v, (int, float)) or hasattr(v, "item") else v)
                                                 for k, v in w.items()} for s, w in nxt}}
@@ -326,13 +366,14 @@ class Watch:
                      f"<b>Plan {'CE' if up else 'PE'}:</b> buy now or on a dip back to ₹{it['level']:,.1f}; stop if it closes back "
                      f"{'below' if up else 'above'} ₹{stop:,.1f}; hold up to 3 days."]
             lines += suggest.plan_text(sym, "CE" if up else "PE", {}, opt, self.budget)[-1:]
-            self.bot.send("\n".join(lines))
+            self.bot.post("\n".join(lines))
             self.tracker.add_breakout(sym, it["side"], it["level"], px, True, "live breakout", it["kind"], score + 2)
 
-    def digest(self, label):
+    def digest(self, label, public=False):
         rows = self.state.get("today", [])
         if not rows:
-            self.bot.send(f"📋 News digest ({label}): no graded F&O news yet today.")
+            if not public:
+                self.bot.send(f"📋 News digest ({label}): no graded F&O news yet today.")
             return
         by = {}
         for r in rows:
@@ -342,7 +383,7 @@ class Watch:
             net = sum(r["dir"] for r in rs)
             icon = "🟢" if net > 0 else "🔴" if net < 0 else "⚪"
             lines.append(f"{icon} <b>{esc(s)}</b>: " + "; ".join(f"{r['t']} {esc(r['head'] or r['event'])}" for r in rs[-3:]))
-        self.bot.send("\n".join(lines))
+        (self.bot.post if public else self.bot.send)("\n".join(lines))
 
     def run(self, until, backfill):
         self.market.connect_breeze(breeze_token(self.state))
@@ -383,7 +424,7 @@ class Watch:
                 self.tracker.close_day()
                 done.append("close")
             if now().weekday() < 5 and "15:45" <= hm0 < "16:30" and "score" not in done:
-                self.bot.send(self.tracker.scorecard())
+                self.bot.post(self.tracker.scorecard())
                 done.append("score")
             if now().weekday() < 5 and hm0 >= "19:15" and "bo_scan" not in done and t - getattr(self, "bo_try", 0) > 900:
                 self.bo_try = t
@@ -395,7 +436,9 @@ class Watch:
             if now().weekday() == 4 and "16:00" <= hm0 < "17:00" and "learn" not in done:
                 self.bot.send(self.tracker.learn(apply=True))
                 done.append("learn")
-            offset, cmds = self.bot.commands(offset)
+            offset, cmds, chans = self.bot.commands(offset)
+            for ev in chans:
+                self.channel_event(ev)
             for c in cmds:
                 self.command(c)
             self.state["bot_offset"] = offset
@@ -403,7 +446,7 @@ class Watch:
             for d in CFG.get("digests", []):
                 if hm >= d and d not in self.state.setdefault("digest_done", []) and hm < (datetime.strptime(d, "%H:%M") + timedelta(minutes=20)).strftime("%H:%M"):
                     self.state["digest_done"].append(d)
-                    self.digest(d)
+                    self.digest(d, public=True)
             if t - last_save > 120:
                 self.state["last_run_end"] = now().isoformat()
                 self.save()

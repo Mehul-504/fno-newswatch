@@ -176,10 +176,13 @@ def first_json(text):
 # ------------------------------------------------------------------ Telegram bot (alerts out, commands in)
 
 class Bot:
+    """send() talks to the owner's private chat. post() is for alerts: it goes to the linked channel when there is one
+    (the owner reads it there too), else to the owner. Only the owner's chat can give commands or link a channel."""
     API = "https://api.telegram.org/bot%s/%s"
 
     def __init__(self, dry_run=False):
         self.token, self.chat = secret("TELEGRAM_BOT_TOKEN"), str(secret("TELEGRAM_CHAT_ID") or "")
+        self.channel = str(secret("TELEGRAM_CHANNEL_ID") or "")
         self.dry = dry_run or not (self.token and self.chat)
 
     def _call(self, method, payload):
@@ -188,16 +191,21 @@ class Bot:
         with urllib.request.urlopen(req, timeout=40) as r:
             return json.loads(r.read().decode())
 
-    def send(self, text):
-        print("\n" + "-" * 60 + "\n" + text + "\n" + "-" * 60, flush=True)
+    def send(self, text, chat=None):
+        chat = str(chat or self.chat)
+        where = "" if chat == self.chat else f" [to {chat}]"
+        print("\n" + "-" * 60 + where + "\n" + text + "\n" + "-" * 60, flush=True)
         if self.dry:
             return True
         for chunk in [text[i:i + 3900] for i in range(0, len(text), 3900)]:
             for attempt in range(4):   # connection resets happen; retry before giving up
                 try:
-                    self._call("sendMessage", {"chat_id": self.chat, "text": chunk, "parse_mode": "HTML",
+                    self._call("sendMessage", {"chat_id": chat, "text": chunk, "parse_mode": "HTML",
                                                "disable_web_page_preview": True})
                     break
+                except urllib.error.HTTPError as e:   # refused (bot not admin, chat gone, bad text): no point retrying
+                    print(f"telegram refused ({e.code}) for {chat}:", e.read().decode(errors="ignore")[:160], file=sys.stderr)
+                    return False
                 except (urllib.error.URLError, OSError, ValueError) as e:
                     print(f"telegram send failed (try {attempt + 1}):", str(e)[:120], file=sys.stderr)
                     time.sleep(3 * (attempt + 1))
@@ -205,21 +213,45 @@ class Bot:
                 return False
         return True
 
+    def post(self, text):
+        """An alert: to the linked channel if any (falls back to the owner if the channel refuses)."""
+        if self.channel and self.channel != self.chat:
+            if self.send(text, self.channel):
+                return True
+            return self.send("⚠️ Could not post to the alert channel (is the bot still an admin there?):\n\n" + text)
+        return self.send(text)
+
     def commands(self, offset):
-        """New messages from the owner's chat only: returns (next offset, [text, ...])."""
+        """New updates: (next offset, owner's command texts, channel events). A channel event is a channel or group
+        the OWNER added this bot to / removed it from, or a channel post the owner forwarded here to link it."""
         if self.dry:
-            return offset, []
+            return offset, [], []
         try:
-            j = self._call("getUpdates", {"offset": offset, "timeout": 0, "allowed_updates": ["message"]})
+            j = self._call("getUpdates", {"offset": offset, "timeout": 0,
+                                          "allowed_updates": ["message", "my_chat_member"]})
         except (urllib.error.URLError, OSError, ValueError):
-            return offset, []
-        out = []
+            return offset, [], []
+        out, chans = [], []
         for u in j.get("result", []):
             offset = max(offset, u["update_id"] + 1)
+            mc = u.get("my_chat_member")
+            if mc:
+                chat, st = mc.get("chat") or {}, (mc.get("new_chat_member") or {}).get("status")
+                if chat.get("type") in ("channel", "supergroup", "group"):
+                    if st in ("left", "kicked"):
+                        chans.append(dict(op="removed", id=str(chat.get("id")), title=chat.get("title") or ""))
+                    elif str((mc.get("from") or {}).get("id")) == self.chat and st == "administrator":
+                        chans.append(dict(op="link", id=str(chat.get("id")), title=chat.get("title") or ""))
+                continue
             msg = u.get("message") or {}
-            if str((msg.get("chat") or {}).get("id")) == self.chat and msg.get("text"):
+            if str((msg.get("chat") or {}).get("id")) != self.chat:
+                continue
+            fwd = msg.get("forward_from_chat") or (msg.get("forward_origin") or {}).get("chat")
+            if fwd and fwd.get("type") == "channel":
+                chans.append(dict(op="link", id=str(fwd.get("id")), title=fwd.get("title") or ""))
+            elif msg.get("text"):
                 out.append(msg["text"].strip())
-        return offset, out
+        return offset, out, chans
 
 
 def esc(s):
