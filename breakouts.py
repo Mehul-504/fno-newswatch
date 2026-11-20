@@ -49,25 +49,43 @@ def _fetch(d):
 
 
 def update_store(days=300):
-    """Download missing trading days (newest first) until `days` are on disk; returns the number added."""
+    """Fetch the newest trading days first (back to the first day already stored), then older days until `days` are on
+    disk, then trim the oldest. Returns the number of days added."""
     os.makedirs(BHAV, exist_ok=True)
-    have = {f[:8] for f in os.listdir(BHAV)}
-    added, d, misses = 0, now().date(), 0
-    while len(have) < days and misses < 40:
-        if d.weekday() < 5 and f"{d:%Y%m%d}" not in have:
+    have = {f[:8] for f in os.listdir(BHAV) if f.endswith(".csv.gz")}
+    added = 0
+
+    def save(d, txt):
+        with gzip.open(os.path.join(BHAV, f"{d:%Y%m%d}.csv.gz"), "wt") as f:
+            f.write(txt)
+        have.add(f"{d:%Y%m%d}")
+
+    d, steps = now().date(), 0
+    while steps < 15:                                    # 1) recent days, newest first
+        if d.weekday() < 5:
+            if f"{d:%Y%m%d}" in have:
+                break
             txt = _fetch(d)
             if txt:
-                with gzip.open(os.path.join(BHAV, f"{d:%Y%m%d}.csv.gz"), "wt") as f:
-                    f.write(txt)
-                have.add(f"{d:%Y%m%d}")
+                save(d, txt)
                 added += 1
-                misses = 0
-            elif (now().date() - d).days > 3:
-                misses += 1
+            steps += 1
         d -= timedelta(days=1)
-        if (now().date() - d).days > 500:
-            break
-    for f in sorted(os.listdir(BHAV))[:-days - 20]:
+    if len(have) < days:                                 # 2) older days until the store is full
+        oldest = min(have) if have else f"{now().date():%Y%m%d}"
+        d = date(int(oldest[:4]), int(oldest[4:6]), int(oldest[6:8])) - timedelta(days=1)
+        misses = 0
+        while len(have) < days and misses < 40 and (now().date() - d).days < 500:
+            if d.weekday() < 5:
+                txt = _fetch(d)
+                if txt:
+                    save(d, txt)
+                    added += 1
+                    misses = 0
+                else:
+                    misses += 1
+            d -= timedelta(days=1)
+    for f in sorted(x for x in os.listdir(BHAV) if x.endswith(".csv.gz"))[:-days]:   # 3) trim
         os.remove(os.path.join(BHAV, f))
     return added
 
@@ -193,6 +211,30 @@ def flat_level(h, l, c, end, up_side=True, lookback=120):
     return best
 
 
+def box(h, l, c, v, end, up_side=True):
+    """Volume + consolidation setup: a tight sideways box over the last 10-30 bars before `end`.
+    Tight = at most 8% wide and at most 3 x ATR(14); daily swings shrinking (last 10 days' average range at most 85% of
+    the 40 days before). The longest qualifying window wins. `dry` = volume inside the box vs the 40 days before it."""
+    if end < 60:
+        return None
+    a = atr(h[:end], l[:end], c[:end])[end - 1]
+    rng = h - l
+    contraction = rng[end - 10:end].mean() / max(rng[end - 50:end - 10].mean(), 1e-9)
+    if contraction > 0.85:
+        return None
+    for w in (30, 20, 15, 10):
+        hi, lo = h[end - w:end].max(), l[end - w:end].min()
+        if lo <= 0 or hi / lo - 1 > 0.08 or (hi - lo) > 3.0 * a:
+            continue
+        prior = v[max(0, end - w - 40):end - w]
+        dry = v[end - w:end].mean() / prior.mean() if len(prior) and prior.mean() > 0 else float("nan")
+        lvl = hi if up_side else lo
+        touches = int(np.sum(np.abs((h[end - w:end] if up_side else l[end - w:end]) / lvl - 1) <= 0.01))
+        return dict(level=lvl, hi=hi, lo=lo, width=hi / lo - 1, days=w, span=w, touches=touches,
+                    contraction=contraction, dry=dry)
+    return None
+
+
 # ------------------------------------------------------------------ checks and scan
 
 def checks(s, i, side, level):
@@ -243,23 +285,30 @@ def scan(store, fno, i_from_end=1, near_pct=0.03):
             fl = flat_level(s["h"], s["l"], c, i, up_side=up)
             if fl and fl["span"] >= 20:
                 kinds.append(("flat", fl["level"], fl["level"], fl, fl["level"]))
+            bx = box(s["h"], s["l"], c, s["v"], i, up_side=up)
+            if bx:
+                kinds.append(("box", bx["level"], bx["level"], bx, bx["level"]))
             for kind, L, Lprev, meta, Lnext in kinds:
                 crossed = c[i] > L * (1 + TOL) and c[i - 1] <= Lprev * (1 + TOL) if up else \
                     c[i] < L * (1 - TOL) and c[i - 1] >= Lprev * (1 - TOL)
                 side = "up" if up else "down"
                 if crossed:
                     ok, info = checks(s, i, side, L)
+                    if kind == "box" and not (info["vol_ratio"] >= 2):
+                        continue   # the consolidation setup needs the breakout day on 2x+ volume
                     events.append(dict(sym=sym, fno=sym in fno, side=side, kind=kind, level=L, close=c[i],
                                        touches=meta["touches"], span=meta["span"], turnover_cr=s["t"][i] / 100,
+                                       box_width=meta.get("width"), box_dry=meta.get("dry"),
                                        score=sum(1 for v in ok.values() if v[0]), checks={k: v[1] for k, v in ok.items()},
                                        passed=[k for k, v in ok.items() if v[0]], info=info, day=str(s["days"][i])))
                 elif sym in fno:
                     gap = (Lnext / c[i] - 1) if up else (1 - Lnext / c[i])
-                    if 0 < gap <= near_pct:
+                    if 0 < gap <= (0.02 if kind == "box" else near_pct):
                         cur = watch.get(sym)
                         if cur is None or gap < cur["gap"]:
                             watch[sym] = dict(side=side, kind=kind, level=round(Lnext, 2), gap=gap,
-                                              touches=meta["touches"], span=meta["span"])
+                                              touches=meta["touches"], span=meta["span"],
+                                              width=meta.get("width"), avg_vol=float(s["v"][max(0, i - 19):i + 1].mean()))
     best = {}
     for e in events:   # one line per stock and side: the one with the best score, then most touches
         k = (e["sym"], e["side"])

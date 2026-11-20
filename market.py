@@ -121,6 +121,19 @@ class Market:
         self.cache[key] = (time.monotonic(), bars)
         return bars
 
+    def volume_note(self, sym, avg_daily):
+        """Today's volume so far vs the 20-day average, prorated for the time of day (needs Breeze minute volume)."""
+        if not self.breeze or not avg_daily:
+            return "⚠️ volume unconfirmed (needs Breeze — check your chart)"
+        try:
+            bars = self._breeze_bars(sym)
+        except Exception:
+            return "⚠️ volume unconfirmed"
+        vol = sum(b[4] for b in bars)
+        mins = max(15, min(375, (now().hour - 9) * 60 + now().minute - 15))
+        ratio = vol / (avg_daily * mins / 375)
+        return f"{'✅' if ratio >= 2 else '⚠️'} volume {ratio:.1f}× normal for this time"
+
     def option_quote(self, sym, expiry, strike, right, max_age=50):
         """Live bid / ask / last price of one option from NSE's chain (cached briefly per stock and expiry)."""
         key = ("chain", sym, str(expiry))
