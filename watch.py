@@ -21,7 +21,8 @@ import time
 from datetime import datetime, time as dtime, timedelta  # noqa: F401
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import LLM_STATS, STATE, Bot, esc, load_json, log, now, save_json, secret  # noqa: E402
+from common import (LLM_STATS, STATE, Bot, day_name, esc, load_json, log, next_trading_day, now, save_json, secret,
+                    trading_day)  # noqa: E402
 import fno  # noqa: E402
 import grading  # noqa: E402
 import market as M  # noqa: E402
@@ -300,7 +301,8 @@ class Watch:
         cash = sorted([e for e in ev if not e["fno"] and e["turnover_cr"] >= 5 and e["close"] >= 20],
                       key=lambda e: (-e["score"], -e["turnover_cr"]))
         name = {"trendline": "trendline", "flat": "flat top", "box": "tight range"}
-        nxt_day = "Monday" if now().weekday() == 4 else "tomorrow"
+        nd = day_name(next_trading_day())
+        nxt_day = "tomorrow" if nd == "Tomorrow" else nd
         lines = [f"📈 <b>Chart breakouts — {latest:%d %b}</b> (closing prices, daily chart)"]
         if fno_ev:
             lines.append(f"<b>F&amp;O</b> — paper-tracked from 9:30 {nxt_day} if still past the line:")
@@ -328,7 +330,7 @@ class Watch:
             lines.append(f"\n🎯 <b>{nxt_day.capitalize()}'s F&amp;O watchlist</b> — alert the moment the line breaks:")
             lines.append(" · ".join(f"{esc(s)}{' 📦' if w['kind'] == 'box' else ''} {'↑' if w['side'] == 'up' else '↓'}₹{w['level']:,.1f} ({w['gap'] * 100:.1f}%)" for s, w in nxt))
         self.bot.post("\n".join(lines))
-        self.state["bo_watch"] = {"day": str(tracker.next_weekday(now().date())),
+        self.state["bo_watch"] = {"day": str(next_trading_day()),
                                   "items": {s: {k: (float(v) if isinstance(v, (int, float)) or hasattr(v, "item") else v)
                                                 for k, v in w.items()} for s, w in nxt}}
         self.state["bo_alerted"] = []
@@ -336,7 +338,7 @@ class Watch:
 
     def live_breakouts(self):
         w = self.state.get("bo_watch") or {}
-        if w.get("day") != self.day or now().weekday() > 4 or not (dtime(9, 30) <= now().time() <= dtime(15, 0)):
+        if w.get("day") != self.day or not trading_day() or not (dtime(9, 30) <= now().time() <= dtime(15, 0)):
             return
         done = self.state.setdefault("bo_alerted", [])
         for sym, it in (w.get("items") or {}).items():
@@ -420,13 +422,13 @@ class Watch:
                 last_trk = t
             hm0 = now().strftime("%H:%M")
             done = self.state.setdefault("digest_done", [])
-            if now().weekday() < 5 and "15:16" <= hm0 < "15:40" and "close" not in done:
+            if trading_day() and "15:16" <= hm0 < "15:40" and "close" not in done:
                 self.tracker.close_day()
                 done.append("close")
-            if now().weekday() < 5 and "15:45" <= hm0 < "16:30" and "score" not in done:
+            if trading_day() and "15:45" <= hm0 < "16:30" and "score" not in done:
                 self.bot.post(self.tracker.scorecard())
                 done.append("score")
-            if now().weekday() < 5 and hm0 >= "19:15" and "bo_scan" not in done and t - getattr(self, "bo_try", 0) > 900:
+            if trading_day() and hm0 >= "19:15" and "bo_scan" not in done and t - getattr(self, "bo_try", 0) > 900:
                 self.bo_try = t
                 try:
                     if self.evening_scan():

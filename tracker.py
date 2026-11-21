@@ -17,7 +17,7 @@ import math
 import os
 from datetime import datetime, time as dtime, timedelta
 
-from common import STATE, esc, log, now
+from common import STATE, esc, log, next_trading_day, now, trading_day
 
 SCORES = os.path.join(STATE, "scores.jsonl")
 MIN_N, MUTE_PF, UNMUTE_PF = 30, 0.8, 1.0
@@ -64,7 +64,7 @@ class Tracker:
         side = "CE" if g["direction"] > 0 else "PE"
         today = now().date()
         t = now().time()
-        plan_day = next_weekday(today) if t >= dtime(15, 0) or today.weekday() > 4 else today   # weekend news -> Monday
+        plan_day = next_trading_day(today) if t >= dtime(15, 0) or not trading_day(today) else today   # weekend/holiday news -> next session
         kind = "tip" if g.get("event_type") == "tip/call" and g.get("tip") else "rule"
         rid = f"{plan_day}|{sym}|{side}|{kind}"
         if any(r["id"] == rid for r in self.recs):
@@ -87,7 +87,7 @@ class Tracker:
 
     def add_breakout(self, sym, side, level, price, alerted, source, kind, score, start_next_day=False):
         today = now().date()
-        day = next_weekday(today) if start_next_day or today.weekday() > 4 else today
+        day = next_trading_day(today) if start_next_day or not trading_day(today) else today
         opt_side = "CE" if side == "up" else "PE"
         rid = f"{day}|{sym}|{opt_side}|breakout"
         if any(r["id"] == rid for r in self.recs):
@@ -141,7 +141,7 @@ class Tracker:
     def _bars(self, sym, day_str):
         """Today's minute bars, only on the plan day and only if they really are today's (on weekends and holidays
         NSE keeps serving the last session, which must not be traded)."""
-        if day_str != str(now().date()) or now().weekday() > 4:
+        if day_str != str(now().date()) or not trading_day():
             return []
         bars = self.m.series(sym)
         return bars if bars and bars[-1][0].date() == now().date() else []
@@ -282,8 +282,8 @@ class Tracker:
 
     def update(self):
         t = now()
-        if t.weekday() > 4:
-            return   # markets shut: nothing can trade
+        if not trading_day(t.date()):
+            return   # markets shut (weekend or NSE holiday): nothing can trade
         today = str(t.date())
         tip_round = (t.timestamp() - self.last_tip_poll) >= 290
         for r in self.recs:

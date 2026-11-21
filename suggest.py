@@ -7,7 +7,7 @@ did not test profitable). Strike: deepest in-the-money within the budget.
 
 from datetime import time as dtime
 
-from common import esc, now
+from common import day_name, esc, next_trading_day, now, trading_day
 
 
 def rs(x, d=1):
@@ -15,11 +15,13 @@ def rs(x, d=1):
 
 
 def plan_text(sym, side, snap, opt, budget):
-    t = now().time()
+    t, today = now().time(), now().date()
     up = side == "CE"
     lines = []
-    if t >= dtime(15, 0) or t < dtime(9, 15):
-        when = "Tomorrow" if t >= dtime(15, 0) else "Today"
+    open_today = trading_day(today)
+    if not open_today or t >= dtime(15, 0) or t < dtime(9, 15):
+        plan_d = today if open_today and t < dtime(9, 15) else next_trading_day(today)
+        when = day_name(plan_d, today)
         lines.append(f"<b>{when}'s plan ({side}):</b> after 9:30, if the first 15-min candle closes "
                      f"{'green' if up else 'red'} and price breaks its {'high' if up else 'low'}, buy {side}; "
                      f"stop at its {'low' if up else 'high'}; exit by 15:15.")
@@ -68,12 +70,15 @@ def alert(sym, g, post, others, snap, opt, budget, model_rank=None, mode=""):
     src = f"<i>{esc(post['source'])}</i>" + (f" (+{others} more)" if others else "")
     lines = [head, esc(g.get("headline") or post["text"][:120]), src]
     px = []
-    if snap.get("spot") is not None:
+    live = snap.get("asof") == now().date() and trading_day()
+    if snap.get("spot") is not None and live:
         ch = f" ({snap['chg'] * 100:+.1f}% today)" if snap.get("chg") is not None else ""
         px.append(f"Price {rs(snap['spot'])}{ch}")
+    elif snap.get("spot") is not None:
+        px.append(f"Last price {rs(snap['spot'])} ({snap['asof']:%a %d %b} close" + (", market shut today)" if not trading_day() else ")"))
     elif snap.get("pc"):
         px.append(f"Prev close {rs(snap['pc'])}")
-    if snap.get("or_high"):
+    if snap.get("or_high") and live:
         px.append(f"15-min range {rs(snap['or_low'])}–{rs(snap['or_high'])}")
     if snap.get("atr") and snap.get("pc"):
         px.append(f"normal day ±{snap['atr'] / snap['pc'] * 100:.1f}%")

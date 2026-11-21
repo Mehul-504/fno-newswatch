@@ -88,6 +88,7 @@ class Market:
                 self.nse_ok = False
                 log(f"NSE chart failed for {sym}: {str(e)[:60]}")
         if bars:
+            snap["asof"] = bars[-1][0].date()   # on weekends/holidays/pre-open NSE serves the last session
             snap["spot"] = bars[-1][3]
             snap["day_high"] = max(b[1] for b in bars)
             snap["day_low"] = min(b[2] for b in bars)

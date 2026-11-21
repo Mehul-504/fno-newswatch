@@ -9,7 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 IST = timezone(timedelta(hours=5, minutes=30))
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -59,6 +59,54 @@ def secret(name, default=None):
 
 
 # ------------------------------------------------------------------ NSE website (free, no login)
+
+_HOLIDAYS = None
+
+
+def nse_holidays():
+    """NSE trading holidays (F&O and cash), from NSE's own list, cached in state for a week. Empty if unavailable,
+    in which case only weekends count as closed."""
+    global _HOLIDAYS
+    if _HOLIDAYS is not None:
+        return _HOLIDAYS
+    path = os.path.join(STATE, "holidays.json")
+    j = load_json(path, {})
+    try:
+        fresh = (now() - datetime.fromisoformat(j["fetched"])).days < 7
+    except (KeyError, ValueError, TypeError):
+        fresh = False
+    if not fresh:
+        try:
+            h = Nse().api("/api/holiday-master?type=trading")
+            days = sorted({datetime.strptime(x["tradingDate"], "%d-%b-%Y").date().isoformat()
+                           for seg in ("FO", "CM") for x in h.get(seg, []) if x.get("tradingDate")})
+            if days:
+                j = {"fetched": now().isoformat(), "days": days}
+                save_json(path, j)
+        except Exception as e:
+            log(f"NSE holiday list unavailable: {str(e)[:80]}")
+    _HOLIDAYS = {date.fromisoformat(d) for d in j.get("days", [])}
+    return _HOLIDAYS
+
+
+def trading_day(d=None):
+    d = d or now().date()
+    return d.weekday() < 5 and d not in nse_holidays()
+
+
+def next_trading_day(d=None):
+    d = (d or now().date()) + timedelta(days=1)
+    while not trading_day(d):
+        d += timedelta(days=1)
+    return d
+
+
+def day_name(d, today=None):
+    """'Today', 'Tomorrow', 'Monday' (within a week) or '24 Nov'."""
+    today = today or now().date()
+    gap = (d - today).days
+    return "Today" if gap == 0 else "Tomorrow" if gap == 1 else f"{d:%A}" if 1 < gap < 7 else f"{d:%d %b}"
+
 
 class Nse:
     BASE = "https://www.nseindia.com"
