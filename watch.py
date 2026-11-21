@@ -28,6 +28,7 @@ import grading  # noqa: E402
 import market as M  # noqa: E402
 import sources  # noqa: E402
 import suggest  # noqa: E402
+import context  # noqa: E402
 import tracker  # noqa: E402
 import breakouts as BO  # noqa: E402
 
@@ -122,6 +123,7 @@ class Watch:
         self.ranks = model_ranks()
         self.tracker = tracker.Tracker(self.state, self.market, self.uni, self.budget, CFG.get("learning", "auto"))
         self.tracker.roll()
+        self.ctx = context.Context(self._store)
 
     def save(self):
         save_json(STATE_FILE, self.state)
@@ -194,6 +196,7 @@ class Watch:
                 continue
             side = "CE" if g["direction"] > 0 else "PE"
             why = None
+            ctx_lines, facts = [], {}
             if g["strength"] == "weak" and (g["event_type"] not in MEANINGFUL or PRICE_TALK.search(ctx)):
                 why = "price talk / weak non-event"
             elif g["strength"] == "weak" and not CFG.get("alert_weak_news", True):
@@ -204,7 +207,10 @@ class Watch:
                     and not (g["strength"] == "strong" and last.get("strength") != "strong"):
                 why = "duplicate within the hour"
             if not why:
+                ctx_lines, facts = self.ctx.block(s, side, snap.get("spot") or snap.get("pc"), asof=snap.get("asof"))
                 like = dict(source=post["source"], event_type=g["event_type"], strength=g["strength"], side=side,
+                            chart_score=facts.get("chart_score"), results_in_days=facts.get("results_in_days"),
+                            profit_yoy=facts.get("profit_yoy"),
                             alert_hm=now().strftime("%H:%M"), kind="tip" if g["event_type"] == "tip/call" and g.get("tip") else "rule",
                             ran_atr=abs(snap["spot"] - snap["pc"]) / snap["atr"] if snap.get("spot") and snap.get("pc") and snap.get("atr") else None)
                 m = self.tracker.muted_for(like)
@@ -215,7 +221,7 @@ class Watch:
                 self.log_item(dict(row, alerted=False, why=why))
             else:
                 opt = self.market.pick_option(s, side, self.budget)
-                msg = suggest.alert(s, g, post, 0, snap, opt, self.budget, self.ranks.get(s), self.market.mode())
+                msg = suggest.alert(s, g, post, 0, snap, opt, self.budget, self.ranks.get(s), self.market.mode(), ctx_lines)
                 self.bot.post(msg)
                 self.state["sent"][tag] = {"t": now().isoformat(), "strength": g["strength"]}
                 self.state.setdefault("today", []).append(dict(sym=s, dir=g["direction"], strength=g["strength"],
@@ -223,7 +229,7 @@ class Watch:
                 self.log_item(dict(row, alerted=True, snap=snap, option={k: v for k, v in opt.items() if k not in ("atm", "otm")}))
                 sent += 1
             if why != "duplicate within the hour":
-                self.tracker.add(s, g, post, snap, opt, alerted=not why, model_rank=self.ranks.get(s))
+                self.tracker.add(s, g, post, snap, opt, alerted=not why, model_rank=self.ranks.get(s), facts=facts)
         return sent
 
     def command(self, text):
@@ -308,6 +314,13 @@ class Watch:
             lines.append(f"<b>F&amp;O</b> — paper-tracked from 9:30 {nxt_day} if still past the line:")
         for e in fno_ev[:12]:
             icon = "🟢" if e["side"] == "up" else "🔴"
+            try:
+                _, facts = self.ctx.block(e["sym"], "CE" if e["side"] == "up" else "PE", e["close"],
+                                          plan_day=next_trading_day(), chart=False, fundamentals=False)
+            except Exception:
+                facts = {}
+            notes = ((" · ⛔ F&amp;O ban" if facts.get("ban") else "")
+                     + (f" · ⚠️ results in {facts['results_in_days']} days" if (facts.get("results_in_days") or 99) <= 10 else ""))
             if e["kind"] == "box":
                 kind = f"📦 {e['span']}-day tight range ({e['box_width'] * 100:.1f}% wide) " + ("broken up" if e["side"] == "up" else "broken down")
                 where = f"{esc(e['checks']['volume'])}"
@@ -315,9 +328,9 @@ class Watch:
                 kind = name[e["kind"]] if e["side"] == "up" else ("rising trendline" if e["kind"] == "trendline" else "flat bottom") + " broken"
                 where = f"{e['touches']} touches, {e['span']} days · {esc(e['checks']['volume'])}"
             lines.append(f"{icon} <b>{esc(e['sym'])}</b> {kind} ₹{e['level']:,.1f} → close ₹{e['close']:,.1f} · "
-                         f"{where} · score {e['score']}/7 · {esc(e['checks']['room'])}")
+                         f"{where} · score {e['score']}/7 · {esc(e['checks']['room'])}{notes}")
             self.tracker.add_breakout(e["sym"], e["side"], e["level"], e["close"], True, "evening scan", e["kind"],
-                                      e["score"], start_next_day=True)
+                                      e["score"], start_next_day=True, facts=facts)
         if not fno_ev:
             lines.append("No F&amp;O breakouts today.")
         if cash:
@@ -367,9 +380,12 @@ class Watch:
                      + f" · {vol_note}",
                      f"<b>Plan {'CE' if up else 'PE'}:</b> buy now or on a dip back to ₹{it['level']:,.1f}; stop if it closes back "
                      f"{'below' if up else 'above'} ₹{stop:,.1f}; hold up to 3 days."]
+            ctx_lines, facts = self.ctx.block(sym, "CE" if up else "PE", px, chart=False)
+            lines += ctx_lines
             lines += suggest.plan_text(sym, "CE" if up else "PE", {}, opt, self.budget)[-1:]
             self.bot.post("\n".join(lines))
-            self.tracker.add_breakout(sym, it["side"], it["level"], px, True, "live breakout", it["kind"], score + 2)
+            self.tracker.add_breakout(sym, it["side"], it["level"], px, True, "live breakout", it["kind"], score + 2,
+                                      facts=facts)
 
     def digest(self, label, public=False):
         rows = self.state.get("today", [])

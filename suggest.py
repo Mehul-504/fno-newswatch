@@ -61,7 +61,7 @@ def plan_text(sym, side, snap, opt, budget):
     return lines
 
 
-def alert(sym, g, post, others, snap, opt, budget, model_rank=None, mode=""):
+def alert(sym, g, post, others, snap, opt, budget, model_rank=None, mode="", extra=()):
     good = g["direction"] > 0
     icon = "🟢" if good else "🔴"
     tip = g.get("event_type") == "tip/call"
@@ -88,6 +88,7 @@ def alert(sym, g, post, others, snap, opt, budget, model_rank=None, mode=""):
         lean = "up" if model_rank > 0.6 else "down" if model_rank < 0.4 else "neutral"
         agree = (lean == "up" and good) or (lean == "down" and not good)
         lines.append(f"Daily model leans {lean}" + (" ✅ agrees" if agree else " ❌ disagrees" if lean != "neutral" else ""))
+    lines += list(extra)
     lines += plan_text(sym, "CE" if good else "PE", snap, opt, budget)
     if g.get("confidence") == "low" or g.get("by") == "keywords":
         lines.append("<i>Low-confidence read — check the news yourself.</i>")

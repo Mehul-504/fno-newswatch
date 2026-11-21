@@ -45,6 +45,14 @@ def bucket_keys(r):
             f"side: {r.get('side')}", f"alert time: {tod}", f"price had: {ran}", f"kind: {r.get('kind')}"]
     if r.get("model_agree") is not None:
         keys.append(f"daily model: {'agrees' if r['model_agree'] else 'disagrees'}")
+    cs = r.get("chart_score")
+    if cs is not None:
+        keys.append(f"chart: {'agrees 4-5/5' if cs >= 4 else 'mixed 3/5' if cs == 3 else 'disagrees 0-2/5'}")
+    if r.get("results_in_days") is not None:
+        keys.append(f"results: {'within 10 days' if r['results_in_days'] <= 10 else 'later'}")
+    py = r.get("profit_yoy")
+    if py is not None:
+        keys.append(f"last quarter profit: {'up' if py > 0 else 'down'} YoY")
     if r.get("kind") == "breakout":
         keys += [f"strike: {'out of the money' if 'out-of-the-money fallback' in r.get('tags', []) else 'in the money / ATM'}",
                  f"breakout type: {r.get('bo_kind')}", f"breakout score: {'6-7' if (r.get('bo_score') or 0) >= 6 else '4-5' if (r.get('bo_score') or 0) >= 4 else '0-3'}/7",
@@ -60,7 +68,7 @@ class Tracker:
         self.last_tip_poll = 0.0
 
     # ------------------------------------------------------------------ new records
-    def add(self, sym, g, post, snap, opt, alerted, model_rank=None):
+    def add(self, sym, g, post, snap, opt, alerted, model_rank=None, facts=None):
         side = "CE" if g["direction"] > 0 else "PE"
         today = now().date()
         t = now().time()
@@ -80,12 +88,14 @@ class Tracker:
                  source=post["source"], event_type=g.get("event_type"), strength=g.get("strength"),
                  headline=g.get("headline"), alert_t=now().isoformat(), alert_hm=now().strftime("%H:%M"),
                  spot_at_alert=spot, ran_atr=ran, model_agree=agree, tip=g.get("tip") if kind == "tip" else None,
-                 tags=[])
+                 tags=[], **{k: v for k, v in (facts or {}).items() if k in ("chart_score", "ban", "results_in_days", "profit_yoy", "sales_yoy")})
+        if r.get("ban"):
+            r.update(status="skipped", tags=["in F&O ban (no new positions allowed)"])
         if kind == "tip" and spot and r["tip"] and r["tip"].get("right") in (None, "STOCK", "FUT") and r["tip"].get("entry"):
             r["tip"]["on"] = "stock"
         self.recs.append(r)
 
-    def add_breakout(self, sym, side, level, price, alerted, source, kind, score, start_next_day=False):
+    def add_breakout(self, sym, side, level, price, alerted, source, kind, score, start_next_day=False, facts=None):
         today = now().date()
         day = next_trading_day(today) if start_next_day or not trading_day(today) else today
         opt_side = "CE" if side == "up" else "PE"
@@ -96,7 +106,10 @@ class Tracker:
                  source=source, event_type=f"breakout ({kind})", strength=f"score {score}/7", headline=None,
                  alert_t=now().isoformat(), alert_hm=now().strftime("%H:%M"), spot_at_alert=price, ran_atr=None,
                  model_agree=None, tip=None, tags=[], level=float(level), bo_kind=kind, bo_score=int(score),
-                 hold_days=3, days_held=0)
+                 hold_days=3, days_held=0,
+                 **{k: v for k, v in (facts or {}).items() if k in ("ban", "results_in_days", "profit_yoy", "sales_yoy")})
+        if r.get("ban"):
+            r.update(status="skipped", tags=["in F&O ban (no new positions allowed)"])
         self.recs.append(r)
 
     def _breakout(self, r, t):

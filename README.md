@@ -14,6 +14,11 @@ green (red) and price breaks its high (low); stop at the other side; exit by 15:
 strike whose lot costs at most ₹20,000, with its live ask and spread. News direction on its own did not test
 profitable — treat the news as "which stock, which side to watch", not as the entry.
 
+**Stock checks on every alert** (context.py, free NSE data): 📐 chart score out of 5 (20/50 EMA, 200 EMA, RSI, room to
+the next resistance/support, how far it already moved), distance from the 52-week high; ⛔ F&O ban for the trade
+day (paper trade skipped); ⚠️ results within 10 days (IV crush warning); 📊 last quarter's sales and profit vs a
+year earlier (NSE integrated filings). Chart score, results and profit trend are learning groups in /learn.
+
 **Bot commands** (your chat only): `/session <id>`, `/status`, `/digest`, `/scorecard`, `/open`, `/learn`, `/mute N`,
 `/unmute N`, `/watchlist`, `/channel`, `/help`.
 
