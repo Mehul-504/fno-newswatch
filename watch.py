@@ -119,7 +119,7 @@ class Watch:
         self.budget = float(CFG.get("budget_rs", 20000))
         self.day = str(now().date())
         if self.state.get("day") != self.day:
-            self.state.update(day=self.day, sent={}, recent={}, digest_done=[], today=[])
+            self.state.update(day=self.day, sent={}, recent={}, digest_done=[], today=[], rx={})
         self.ranks = model_ranks()
         self.tracker = tracker.Tracker(self.state, self.market, self.uni, self.budget, CFG.get("learning", "auto"))
         self.tracker.roll()
@@ -274,7 +274,14 @@ class Watch:
                           "/open — paper trades in play\n/learn — lessons from all tracked trades\n"
                           "/mute N, /unmute N — approve suggestion N from /learn\n"
                           "/watchlist — today's chart-breakout watchlist\n"
+                          "/results — today's results filings and their 15-min reaction (paper test)\n"
                           "/channel — where alerts go · /channel off — back to this chat\n/help — this list")
+        elif cmd == "/results":
+            rx = self.state.get("rx") or {}
+            self.bot.send("📣 <b>Results filings today</b> (rule: filed 9:20-14:30, 15-min move ≥ 0.5× a normal day)\n" + (
+                "\n".join(f"{esc(k)} {datetime.fromisoformat(v['t']):%H:%M} · " + (f"{v['r'] * 100:+.1f}% ({v['z']:.2f}×) · " if 'r' in v else "")
+                          + esc(v.get("status", "")) for k, v in sorted(rx.items(), key=lambda kv: kv[1]["t"]))
+                or "None yet."))
         elif cmd == "/channel":
             if len(parts) >= 2 and parts[1].lower() == "off":
                 self.state.pop("channel", None)
@@ -348,6 +355,76 @@ class Watch:
                                                 for k, v in w.items()} for s, w in nxt}}
         self.state["bo_alerted"] = []
         return True
+
+    # ------------------------------------------------------------------ results reaction (paper test)
+    RX_NOTE = ("<i>Paper test of a new rule: past 2 years 67 trades, profit factor 2.4 on modelled option prices — "
+               "not yet confirmed on real prices. Not advice.</i>")
+
+    def results_seen(self, p):
+        """An F&O stock filed its quarterly results: if filed 9:20-14:30 today, check the price reaction 15 min later."""
+        s, ts = p["syms"][0], p["ts"]
+        rx = self.state.setdefault("rx", {})
+        if s in rx or not trading_day() or ts.date() != now().date():
+            return
+        ok = dtime(9, 20) <= ts.time() <= dtime(14, 30)
+        rx[s] = dict(t=ts.isoformat(), status="waiting" if ok else "filed outside 9:20-14:30")
+        log(f"results filing {s} at {ts:%H:%M}" + ("" if ok else " (outside 9:20-14:30, not traded)"))
+
+    def results_check(self):
+        rx = self.state.get("rx") or {}
+        for s, it in rx.items():
+            if it.get("status") != "waiting":
+                continue
+            ft = datetime.fromisoformat(it["t"])
+            due = ft + timedelta(minutes=15)
+            if now() < due:
+                continue
+            late = now() - due > timedelta(minutes=5)
+            if now() - due > timedelta(minutes=60):
+                it["status"] = "missed (bot was not running)"
+                continue
+            bars = self.market.series(s, max_age=20)
+            ftn, duen = ft.replace(tzinfo=None), due.replace(tzinfo=None)
+            pre = [b for b in bars if b[0] <= ftn]
+            post = [b for b in bars if b[0] <= duen]
+            if not pre or not post or post[-1][0] < duen - timedelta(minutes=3):
+                if now() - due > timedelta(minutes=10):
+                    it["status"] = "no minute prices around the filing"
+                continue
+            snap = self.market.snapshot(s)
+            atr, pc = snap.get("atr"), snap.get("pc")
+            if not atr or not pc:
+                it["status"] = "no normal-range data"
+                continue
+            p0, p15 = pre[-1][3], post[-1][3]
+            r = p15 / p0 - 1
+            z = abs(r) / (atr / pc)
+            it.update(p0=p0, p15=p15, r=round(r, 4), z=round(z, 2))
+            if z < 0.5:
+                it["status"] = f"small reaction ({z:.2f}x a normal day)"
+                log(f"results {s}: {r * 100:+.1f}% in 15 min = {z:.2f}x day, below 0.5x -> no trade")
+                continue
+            up = r > 0
+            side = "CE" if up else "PE"
+            px = bars[-1][3]
+            ctx_lines, facts = self.ctx.block(s, side, px, chart=False, fundamentals=False)
+            ctx_lines = [x for x in ctx_lines if not x.startswith("⚠️ Results")]
+            opt = self.market.pick_option(s, side, self.budget)
+            exit_day = next_trading_day(next_trading_day(now().date()))
+            lines = [f"📣 <b>RESULTS REACTION · {esc(s)}</b> · {side} · {now():%H:%M}",
+                     f"Results filed {ft:%H:%M} → 15 min later ₹{p15:,.1f} vs ₹{p0:,.1f} just before "
+                     f"({r * 100:+.1f}%, {z:.1f}× a normal day){' · ⚠️ checked late' if late else ''}",
+                     f"<b>Paper rule (testing):</b> buy {side} now, no stop-loss, sell at 15:15 on {exit_day:%a %d %b} "
+                     f"(day 3)."]
+            lines += ctx_lines
+            lines += suggest.plan_text(s, side, {}, opt, self.budget)[-1:]
+            lines.append(self.RX_NOTE)
+            self.bot.post("\n".join(lines))
+            self.tracker.add_results(s, side, dict(px=px, p0=p0, r=r, z=z, filing_hm=f"{ft:%H:%M}", late=late), facts)
+            it["status"] = "alerted"
+            self.log_item(dict(t=now(), post_time=ft, source="NSE results filing", text=f"results reaction {r * 100:+.1f}%",
+                               direction=1 if up else -1, strength="results reaction", event_type="results reaction",
+                               alerted=True, option={k: v for k, v in opt.items() if k not in ("atm", "otm")}))
 
     def live_breakouts(self):
         w = self.state.get("bo_watch") or {}
@@ -427,8 +504,14 @@ class Watch:
             if t - last_nse >= 60:
                 since = now() - timedelta(minutes=backfill) if not last_nse else None
                 for p in self.filings.poll(since):
+                    if p.get("results"):
+                        self.results_seen(p)
                     self.handle(p)
                 last_nse = t
+            try:
+                self.results_check()
+            except Exception as e:
+                log(f"results check: {str(e)[:80]}")
             if t - last_trk >= 120:
                 self.tracker.update()
                 try:

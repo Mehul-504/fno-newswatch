@@ -53,6 +53,10 @@ def bucket_keys(r):
     py = r.get("profit_yoy")
     if py is not None:
         keys.append(f"last quarter profit: {'up' if py > 0 else 'down'} YoY")
+    if r.get("kind") == "results":
+        z = r.get("ran_atr") or 0
+        keys += [f"results reaction: {r.get('side')}", f"reaction size: {'1x day or more' if z >= 1 else '0.5-1x day'}",
+                 f"results filed: {'before 12:00' if (r.get('filing_hm') or '') < '12:00' else '12:00-14:30'}"]
     if r.get("kind") == "breakout":
         keys += [f"strike: {'out of the money' if 'out-of-the-money fallback' in r.get('tags', []) else 'in the money / ATM'}",
                  f"breakout type: {r.get('bo_kind')}", f"breakout score: {'6-7' if (r.get('bo_score') or 0) >= 6 else '4-5' if (r.get('bo_score') or 0) >= 4 else '0-3'}/7",
@@ -111,6 +115,43 @@ class Tracker:
         if r.get("ban"):
             r.update(status="skipped", tags=["in F&O ban (no new positions allowed)"])
         self.recs.append(r)
+
+    def add_results(self, sym, side, info, facts=None):
+        """Results-reaction paper trade (research/out/frozen_rule_results_rx.txt): bought at once, no stop, sold at
+        15:15 on the 3rd trading day (results day = day 1)."""
+        today = now().date()
+        rid = f"{today}|{sym}|{side}|results"
+        if any(r["id"] == rid for r in self.recs):
+            return None
+        z = info["z"]
+        r = dict(id=rid, day=str(today), sym=sym, side=side, kind="results", alerted=True, status="waiting",
+                 source="NSE results filing", event_type="results reaction",
+                 strength="big (1x day+)" if z >= 1 else "medium (0.5-1x day)", headline=None,
+                 alert_t=now().isoformat(), alert_hm=now().strftime("%H:%M"), spot_at_alert=info["px"], ran_atr=z,
+                 model_agree=None, tip=None, tags=[], filing_hm=info["filing_hm"], react=round(info["r"], 4),
+                 p0=info["p0"], exit_day=str(next_trading_day(next_trading_day(today))),
+                 **{k: v for k, v in (facts or {}).items() if k in ("ban", "profit_yoy", "sales_yoy")})
+        if info.get("late"):
+            r["tags"].append("entered late (bot was not running at +15 min)")
+        self.recs.append(r)
+        if r.get("ban"):
+            r.update(status="skipped", tags=r["tags"] + ["in F&O ban (no new positions allowed)"])
+        else:
+            self._enter(r, info["px"], now().replace(tzinfo=None))
+        if r["status"] != "open":
+            self._score(r)
+        return r
+
+    def _results(self, r, t, force=False):
+        if r["status"] != "open":
+            return
+        if str(t.date()) < r["exit_day"] or (not force and t.time() < dtime(15, 15)):
+            return
+        bars = self.m.series(r["sym"])
+        spot = bars[-1][3] if bars and bars[-1][0].date() == t.date() else (self.m.snapshot(r["sym"]).get("spot") or r["entry_spot"])
+        if str(t.date()) > r["exit_day"]:
+            r["tags"].append("sold late (bot was not running on the exit day)")
+        self._exit(r, spot, t.replace(tzinfo=None), "time")
 
     def _breakout(self, r, t):
         if t.time() < dtime(9, 30):
@@ -302,6 +343,12 @@ class Tracker:
         for r in self.recs:
             if r["status"] not in ("waiting", "open"):
                 continue
+            if r["kind"] == "results":
+                try:
+                    self._results(r, t)
+                except Exception as e:
+                    log(f"tracker {r['id']}: {str(e)[:80]}")
+                continue
             if r["kind"] == "breakout":
                 try:
                     self._breakout(r, t)
@@ -325,6 +372,10 @@ class Tracker:
         """At 15:16: anything still open exits at the current price; still-waiting rule trades never triggered."""
         t = now()
         for r in self.recs:
+            if r["kind"] == "results":
+                if r["status"] == "open" and str(t.date()) >= r["exit_day"]:
+                    self._results(r, t, force=True)   # update() missed the 15:15 window
+                continue
             if r["kind"] == "breakout":
                 if r["status"] == "waiting" and r["day"] == str(t.date()):
                     r.update(status="no_trigger", tags=r["tags"] + ["never triggered"])
@@ -350,7 +401,7 @@ class Tracker:
         """Keep only today's and future records in the live state (closed ones are in scores.jsonl)."""
         today = str(now().date())
         self.recs[:] = [r for r in self.recs if r["day"] >= today and r["status"] in ("waiting", "open")
-                        or r["day"] == today or (r["kind"] == "breakout" and r["status"] == "open")]
+                        or r["day"] == today or (r["kind"] in ("breakout", "results") and r["status"] == "open")]
         self.state["paper"] = self.recs
 
     def _score(self, r):

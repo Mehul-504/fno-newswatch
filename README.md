@@ -19,8 +19,15 @@ the next resistance/support, how far it already moved), distance from the 52-wee
 day (paper trade skipped); ⚠️ results within 10 days (IV crush warning); 📊 last quarter's sales and profit vs a
 year earlier (NSE integrated filings). Chart score, results and profit trend are learning groups in /learn.
 
+**Results reaction (paper test, since 23 Nov 2026)** — rule frozen in research/out/frozen_rule_results_rx.txt: when an
+F&O stock files quarterly results on NSE between 9:20 and 14:30, the bot takes the last price before the filing and
+the price 15 minutes later. If the move is at least half the stock's normal daily range, it posts 📣 RESULTS REACTION:
+buy CE (up) or PE (down) at once, no stop-loss, sell 15:15 on the 3rd trading day; paper-tracked like the other
+alerts (own /learn groups). Backtest Jun 2024-Jul 2026: 67 trades, profit factor 2.4 on modelled option prices — not
+yet confirmed on real prices. `/results` lists the day's filings and their reaction.
+
 **Bot commands** (your chat only): `/session <id>`, `/status`, `/digest`, `/scorecard`, `/open`, `/learn`, `/mute N`,
-`/unmute N`, `/watchlist`, `/channel`, `/help`.
+`/unmute N`, `/watchlist`, `/results`, `/channel`, `/help`.
 
 **Sharing with others** — a private Telegram channel: create the channel, add the bot as an admin with "Post
 messages" allowed (you must be the one who adds it). The bot links it, posts a short not-advice note and from then

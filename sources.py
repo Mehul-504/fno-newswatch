@@ -123,6 +123,14 @@ class Telegram:
         return out
 
 
+def is_results(desc, text):
+    """A quarterly results filing (what the results-reaction rule watches)."""
+    d, t = (desc or "").lower(), (text or "").lower()
+    if "financial result" in d or "integrated filing" in d:
+        return True
+    return "outcome of board meeting" in d and "result" in t
+
+
 class Filings:
     """NSE corporate announcements for F&O stocks, routine filings skipped."""
 
@@ -155,6 +163,7 @@ class Filings:
             if since is not None and ts < since:
                 continue   # first look of the day: older filings are only marked as seen
             text = f"{desc}: {re.sub(r'\s+', ' ', x.get('attchmntText') or '')}"[:900]
-            out.append(dict(source="NSE filing", kind="filing", id=f"nse{sid}", ts=ts, text=text, syms=[sym]))
+            out.append(dict(source="NSE filing", kind="filing", id=f"nse{sid}", ts=ts, text=text, syms=[sym],
+                            results=is_results(desc, x.get("attchmntText"))))
         self.state["nse_seen"] = sorted(self.seen)[-3000:]
         return out
