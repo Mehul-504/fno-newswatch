@@ -366,65 +366,85 @@ class Watch:
         rx = self.state.setdefault("rx", {})
         if s in rx or not trading_day() or ts.date() != now().date():
             return
-        ok = dtime(9, 20) <= ts.time() <= dtime(14, 30)
-        rx[s] = dict(t=ts.isoformat(), status="waiting" if ok else "filed outside 9:20-14:30")
-        log(f"results filing {s} at {ts:%H:%M}" + ("" if ok else " (outside 9:20-14:30, not traded)"))
+        status = "waiting"
+        if not dtime(9, 20) <= ts.time() <= dtime(14, 30):
+            status = "filed outside 9:20-14:30"
+        else:
+            try:
+                dates = self.ctx.results_dates()
+            except Exception:
+                dates = {}   # board-meeting list unavailable: do not block the rule on it
+            if dates and dates.get(s) != now().date():
+                status = "not its results-meeting day (update / re-filing)"
+        rx[s] = dict(t=ts.isoformat(), status=status)
+        log(f"results filing {s} at {ts:%H:%M} -> {status}")
 
     def results_check(self):
-        rx = self.state.get("rx") or {}
-        for s, it in rx.items():
+        for s, it in (self.state.get("rx") or {}).items():
             if it.get("status") != "waiting":
                 continue
-            ft = datetime.fromisoformat(it["t"])
-            due = ft + timedelta(minutes=15)
-            if now() < due:
-                continue
-            late = now() - due > timedelta(minutes=5)
-            if now() - due > timedelta(minutes=60):
-                it["status"] = "missed (bot was not running)"
-                continue
-            bars = self.market.series(s, max_age=20)
-            ftn, duen = ft.replace(tzinfo=None), due.replace(tzinfo=None)
-            pre = [b for b in bars if b[0] <= ftn]
-            post = [b for b in bars if b[0] <= duen]
-            if not pre or not post or post[-1][0] < duen - timedelta(minutes=3):
-                if now() - due > timedelta(minutes=10):
-                    it["status"] = "no minute prices around the filing"
-                continue
-            snap = self.market.snapshot(s)
-            atr, pc = snap.get("atr"), snap.get("pc")
-            if not atr or not pc:
-                it["status"] = "no normal-range data"
-                continue
-            p0, p15 = pre[-1][3], post[-1][3]
-            r = p15 / p0 - 1
-            z = abs(r) / (atr / pc)
-            it.update(p0=p0, p15=p15, r=round(r, 4), z=round(z, 2))
-            if z < 0.5:
-                it["status"] = f"small reaction ({z:.2f}x a normal day)"
-                log(f"results {s}: {r * 100:+.1f}% in 15 min = {z:.2f}x day, below 0.5x -> no trade")
-                continue
-            up = r > 0
-            side = "CE" if up else "PE"
-            px = bars[-1][3]
-            ctx_lines, facts = self.ctx.block(s, side, px, chart=False, fundamentals=False)
-            ctx_lines = [x for x in ctx_lines if not x.startswith("⚠️ Results")]
-            opt = self.market.pick_option(s, side, self.budget)
-            exit_day = next_trading_day(next_trading_day(now().date()))
-            lines = [f"📣 <b>RESULTS REACTION · {esc(s)}</b> · {side} · {now():%H:%M}",
-                     f"Results filed {ft:%H:%M} → 15 min later ₹{p15:,.1f} vs ₹{p0:,.1f} just before "
-                     f"({r * 100:+.1f}%, {z:.1f}× a normal day){' · ⚠️ checked late' if late else ''}",
-                     f"<b>Paper rule (testing):</b> buy {side} now, no stop-loss, sell at 15:15 on {exit_day:%a %d %b} "
-                     f"(day 3)."]
-            lines += ctx_lines
-            lines += suggest.plan_text(s, side, {}, opt, self.budget)[-1:]
-            lines.append(self.RX_NOTE)
-            self.bot.post("\n".join(lines))
-            self.tracker.add_results(s, side, dict(px=px, p0=p0, r=r, z=z, filing_hm=f"{ft:%H:%M}", late=late), facts)
-            it["status"] = "alerted"
-            self.log_item(dict(t=now(), post_time=ft, source="NSE results filing", text=f"results reaction {r * 100:+.1f}%",
-                               direction=1 if up else -1, strength="results reaction", event_type="results reaction",
-                               alerted=True, option={k: v for k, v in opt.items() if k not in ("atm", "otm")}))
+            try:
+                self._results_one(s, it)
+            except Exception as e:      # one bad symbol must not block the others or re-alert
+                it["status"] = f"error: {str(e)[:60]}"
+                log(f"results check {s}: {str(e)[:80]}")
+
+    def _results_one(self, s, it):
+        ft = datetime.fromisoformat(it["t"])
+        due = ft + timedelta(minutes=15)
+        t = now()
+        if t < due:
+            return
+        if t.time() > dtime(15, 0):
+            it["status"] = "missed (too close to the close)"
+            return
+        if t - due > timedelta(minutes=5):
+            it["status"] = "missed (checked more than 5 min late)"
+            return
+        bars = self.market.series(s, max_age=20)
+        ftn, duen = ft.replace(tzinfo=None), due.replace(tzinfo=None)
+        one = timedelta(minutes=1)
+        pre = [b for b in bars if b[0] + one <= ftn]      # minutes that had ended before the filing
+        post = [b for b in bars if b[0] + one <= duen]    # last minute ended by filing + 15 min
+        if not (pre and post and pre[-1][0] >= ftn - timedelta(minutes=4) and post[-1][0] >= duen - timedelta(minutes=4)):
+            if t - due > timedelta(minutes=4):
+                it["status"] = "no fresh minute prices around the filing"
+            return
+        snap = self.market.snapshot(s)
+        atr, pc = snap.get("atr"), snap.get("pc")
+        if not atr or not pc:
+            it["status"] = "no normal-range data"
+            return
+        p0, p15 = pre[-1][3], post[-1][3]
+        r = p15 / p0 - 1
+        z = abs(r) / (atr / pc)
+        it.update(p0=p0, p15=p15, r=round(r, 4), z=round(z, 2))
+        if z < 0.5:
+            it["status"] = f"small reaction ({z:.2f}x a normal day)"
+            log(f"results {s}: {r * 100:+.1f}% in 15 min = {z:.2f}x day, below 0.5x -> no trade")
+            return
+        it["status"] = "alerted"        # set first: whatever fails below, the alert is never sent twice
+        late = t - due > one
+        up = r > 0
+        side = "CE" if up else "PE"
+        px = bars[-1][3]
+        ctx_lines, facts = self.ctx.block(s, side, px, chart=False, fundamentals=False)
+        ctx_lines = [x for x in ctx_lines if not x.startswith("⚠️ Results")]
+        opt = self.market.pick_option(s, side, self.budget)
+        exit_day = next_trading_day(next_trading_day(t.date()))
+        lines = [f"📣 <b>RESULTS REACTION · {esc(s)}</b> · {side} · {t:%H:%M}",
+                 f"Results filed {ft:%H:%M} → 15 min later ₹{p15:,.1f} vs ₹{p0:,.1f} just before "
+                 f"({r * 100:+.1f}%, {z:.1f}× a normal day){' · ⚠️ checked late' if late else ''}",
+                 f"<b>Paper rule (testing):</b> buy {side} now, no stop-loss, sell at 15:15 on {exit_day:%a %d %b} "
+                 f"(day 3)."]
+        lines += ctx_lines
+        lines += suggest.plan_text(s, side, {}, opt, self.budget)[-1:]
+        lines.append(self.RX_NOTE)
+        self.bot.post("\n".join(lines))
+        self.tracker.add_results(s, side, dict(px=px, p0=p0, r=r, z=z, filing_hm=f"{ft:%H:%M}", late=late), facts)
+        self.log_item(dict(t=t, post_time=ft, source="NSE results filing", text=f"results reaction {r * 100:+.1f}%",
+                           direction=1 if up else -1, strength="results reaction", event_type="results reaction",
+                           alerted=True, option={k: v for k, v in opt.items() if k not in ("atm", "otm")}))
 
     def live_breakouts(self):
         w = self.state.get("bo_watch") or {}

@@ -374,7 +374,10 @@ class Tracker:
         for r in self.recs:
             if r["kind"] == "results":
                 if r["status"] == "open" and str(t.date()) >= r["exit_day"]:
-                    self._results(r, t, force=True)   # update() missed the 15:15 window
+                    try:
+                        self._results(r, t, force=True)   # update() missed the 15:15 window
+                    except Exception as e:
+                        log(f"tracker {r['id']}: {str(e)[:80]}")
                 continue
             if r["kind"] == "breakout":
                 if r["status"] == "waiting" and r["day"] == str(t.date()):

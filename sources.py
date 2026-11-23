@@ -126,7 +126,7 @@ class Telegram:
 def is_results(desc, text):
     """A quarterly results filing (what the results-reaction rule watches)."""
     d, t = (desc or "").lower(), (text or "").lower()
-    if "financial result" in d or "integrated filing" in d:
+    if "financial result" in d or ("integrated filing" in d and "financ" in d):   # not "Integrated Filing- Governance"
         return True
     return "outcome of board meeting" in d and "result" in t
 
