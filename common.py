@@ -149,14 +149,18 @@ class Nse:
         return self.api(f"/api/corporate-announcements?index=equities&from_date={d}&to_date={d}") or []
 
     def chart(self, sym):
-        """Today's minute prices: list of (datetime IST, price)."""
+        """Today's traded prices: list of (datetime IST, price).
+        NSE's chart also carries points that are not trades: pre-open ("PO", 9:00-9:10) and the closing auction's
+        indicative prices ("IC", 15:20-15:29; the first ones can sit ~3% away from the last trade). Both are dropped.
+        After the auction NSE repeats the official close as "NM" points (from ~15:32); those are kept, so the tracker
+        itself must not test stops on anything after 15:15 (see tracker.CONT_END)."""
         d = self.api("/api/chart-databyindex-dynamic?index=%sEQN&type=symbol" % urllib.parse.quote(sym))
         out = []
         for p in d.get("grapthData") or []:
-            if len(p) >= 2 and (len(p) < 3 or p[2] != "PO"):
-                out.append((datetime.fromtimestamp(p[0] / 1000, timezone.utc).replace(tzinfo=None) + timedelta(hours=0), float(p[1])))
-        # NSE stamps these points in IST already (epoch-ms of the IST wall clock)
-        return [(t, px) for t, px in out], float(d.get("closePrice") or 0)
+            if len(p) >= 2 and (len(p) < 3 or p[2] not in ("PO", "IC")):
+                # NSE stamps these points in IST already (epoch-ms of the IST wall clock)
+                out.append((datetime.fromtimestamp(p[0] / 1000, timezone.utc).replace(tzinfo=None), float(p[1])))
+        return out, float(d.get("closePrice") or 0)
 
     def expiries(self, sym):
         d = self.api("/api/option-chain-contract-info?symbol=%s" % urllib.parse.quote(sym))

@@ -6,6 +6,8 @@ Two kinds of paper trade, one lot each, real NSE option bid/ask at the moment th
         more than 1% past the level, it waits for a pull-back to the level (as the alert says).
   tip   a tip channel's own levels: buy when the named option (or stock) trades at/above the tip's entry, exit at its
         target, its stop or 15:15.
+Stops are only tested on continuous-session stock prices (before 15:15: after that NSE runs a closing auction) and
+the 15:15 exits go by the clock. Exits sell at the bid unless the bid looks broken (see exit_fill).
 Items the filters did not send are tracked too ("silent"), so the filters themselves get tested.
 Learning: buckets (channel, news type, strength, side, time of day, how far price had run, model agreement) with
 at least 30 closed trades and a clearly losing record get muted (alerts become silent); a muted bucket comes back when
@@ -21,6 +23,23 @@ from common import STATE, esc, log, next_trading_day, now, trading_day
 
 SCORES = os.path.join(STATE, "scores.jsonl")
 MIN_N, MUTE_PF, UNMUTE_PF = 30, 0.8, 1.0
+CONT_END = dtime(15, 15)   # continuous trading ends here; after it NSE runs a closing auction, so stock prices after
+                           # 15:15 (auction guide prices, the repeated official close) never trigger a stop
+BROKEN_BID = 0.7           # an exit bid below 70% of the option's last trade is treated as a broken quote
+BROKEN_TAG = "exit bid looked broken (priced between bid and ask)"
+
+
+def exit_fill(q):
+    """Paper sell price from a live option quote -> (price or None, broken?).
+    Normally the bid. When the bid sits far below the last trade (a stray order in a thin book) nobody would sell
+    there, so the price is the middle of bid and ask (bid and last trade when there is no ask), never above the last
+    trade and never below the bid."""
+    q = q or {}
+    bid, ask, ltp = q.get("bid") or 0, q.get("ask") or 0, q.get("ltp") or 0
+    if bid and ltp and bid < BROKEN_BID * ltp:
+        mid = (bid + ask) / 2 if ask > bid else (bid + ltp) / 2
+        return round(max(bid, min(ltp, mid)), 2), True
+    return (bid or ltp or None), False
 
 
 def charges(buy, sell):
@@ -178,7 +197,8 @@ class Tracker:
                 r["last_day"] = str(t.date())
             et = datetime.fromisoformat(r["entry_t"])
             et = et.replace(tzinfo=None) if et.tzinfo else et
-            for b in bars:
+            day = [b for b in bars if b[0].time() < CONT_END]   # continuous-session prices only (no auction)
+            for b in day:
                 if b[0] <= et:
                     continue
                 mv = (b[3] / r["entry_spot"] - 1) * (1 if up else -1)
@@ -187,9 +207,10 @@ class Tracker:
                 if back:
                     self._exit(r, b[3], b[0], "stop")
                     return
-                if r["days_held"] >= r.get("hold_days", 3) - 1 and b[0].time() >= dtime(15, 15):
-                    self._exit(r, b[3], b[0], "time")
-                    return
+            # time exit by the clock: NSE's last continuous print can come just before 15:15, so waiting for a bar
+            # stamped 15:15 or later would only ever find auction prices
+            if r["days_held"] >= r.get("hold_days", 3) - 1 and t.time() >= CONT_END:
+                self._exit(r, day[-1][3] if day else px, t.replace(tzinfo=None), "time")
 
     # ------------------------------------------------------------------ evaluation
     def _bars(self, sym, day_str):
@@ -215,7 +236,10 @@ class Tracker:
     def _exit(self, r, spot, when, reason):
         q = self.m.option_quote(r["sym"], datetime.fromisoformat(r["expiry"]).date() if "T" in r["expiry"] else
                                 datetime.strptime(r["expiry"], "%Y-%m-%d").date(), r["strike"], r["side"])
-        px = (q or {}).get("bid") or (q or {}).get("ltp")
+        px, broken = exit_fill(q)
+        if broken:
+            r["tags"].append(BROKEN_TAG)
+            r["exit_quote"] = {k: q.get(k) for k in ("bid", "ask", "ltp")}
         if not px:
             move = (spot / r["entry_spot"] - 1) * (1 if r["side"] == "CE" else -1)
             px = max(r["entry_opt"] * (1 + 18 * move - 0.02), 0.05)   # fallback: real-option fit for this strike type
@@ -272,7 +296,8 @@ class Tracker:
         if r["status"] == "open":
             et = datetime.fromisoformat(r["entry_t"])
             et = et.replace(tzinfo=None) if et.tzinfo else et
-            for b in bars:
+            day = [b for b in bars if b[0].time() < CONT_END]   # continuous-session prices only (no auction)
+            for b in day:
                 if b[0] <= et:
                     continue
                 mv = (b[3] / r["entry_spot"] - 1) * (1 if up else -1)
@@ -280,14 +305,13 @@ class Tracker:
                 if (b[2] <= stop) if up else (b[1] >= stop):
                     self._exit(r, b[3], b[0], "stop")
                     return
-                if b[0].time() >= dtime(15, 15):
-                    self._exit(r, b[3], b[0], "time")
-                    return
+            if t.time() >= CONT_END:
+                self._exit(r, day[-1][3] if day else r["entry_spot"], t.replace(tzinfo=None), "time")
 
     def _tip(self, r, t):
         tip = r["tip"]
         if tip.get("on") == "stock":
-            bars = self._bars(r["sym"], r["day"])
+            bars = [b for b in self._bars(r["sym"], r["day"]) if b[0].time() < CONT_END]
             px = bars[-1][3] if bars else None
         else:
             if not tip.get("strike") or tip.get("right") not in ("CE", "PE"):
@@ -326,7 +350,11 @@ class Tracker:
                     self._exit(r, px, t.replace(tzinfo=None), reason)
                 else:
                     q = self.m.option_quote(r["sym"], datetime.strptime(r["expiry"], "%Y-%m-%d").date(), tip["strike"], tip["right"])
-                    out = (q or {}).get("bid") or px
+                    out, broken = exit_fill(q)
+                    if broken:
+                        r["tags"].append(BROKEN_TAG)
+                        r["exit_quote"] = {k: q.get(k) for k in ("bid", "ask", "ltp")}
+                    out = out or px
                     lot = r.get("lot") or 0
                     buy, sell = r["entry_opt"] * lot, out * lot
                     pnl = sell - buy - charges(buy, sell)
