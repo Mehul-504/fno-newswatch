@@ -2,6 +2,9 @@
 
 Daily prices come from NSE's public end-of-day files (sec_bhavdata_full), kept for ~300 trading days in state/bhav/
 and adjusted for splits/bonuses (a >20% open gap vs the previous close is treated as a corporate action).
+For weekday NSE holidays NSE's archive serves the previous session's file again (17 such copies were stored as trading
+days, Oct 2025 - Nov 2026, until 28 Nov 2026). Holidays are no longer fetched, and copies already on disk are skipped
+when loading (by date, and by content in case the holiday list is unavailable).
 
 Lines, drawn the way a trader does on a daily chart:
   falling resistance  two or more swing highs (5 bars each side), the earlier one higher, at least 30 bars apart in
@@ -22,15 +25,32 @@ from datetime import date, timedelta
 
 import numpy as np
 
-from common import STATE, log, now
+from common import STATE, log, now, nse_holidays
 
 BHAV = os.path.join(STATE, "bhav")
 K = 5            # swing point: highest/lowest of 5 bars each side
 TOL = 0.005      # 0.5% beyond the line
 COLS = ("PREV_CLOSE", "OPEN_PRICE", "HIGH_PRICE", "LOW_PRICE", "CLOSE_PRICE", "TTL_TRD_QNTY", "TURNOVER_LACS")
+COPY_SHARE = 0.9  # a day whose prices equal the day before for 90%+ of traded stocks is a holiday copy, not a session
 
 
 # ------------------------------------------------------------------ daily store
+
+def _holidays():
+    try:
+        return nse_holidays()
+    except Exception:
+        return set()
+
+
+def _is_copy(day, prev):
+    """True if `day` repeats `prev` ({sym: [pc, o, h, l, c, qty, turnover]}): NSE's archive serves the previous
+    session's file again for some holidays, and a real session never leaves nearly every traded stock unchanged."""
+    both = [s for s, v in day.items() if v[5] > 0 and s in prev]
+    if len(both) < 50:
+        return False
+    return sum(1 for s in both if day[s][:6] == prev[s][:6]) >= COPY_SHARE * len(both)
+
 
 def _fetch(d):
     url = f"https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_{d:%d%m%Y}.csv"
@@ -53,6 +73,7 @@ def update_store(days=300):
     disk, then trim the oldest. Returns the number of days added."""
     os.makedirs(BHAV, exist_ok=True)
     have = {f[:8] for f in os.listdir(BHAV) if f.endswith(".csv.gz")}
+    hol = _holidays()                                    # NSE serves copies of the day before for some holidays
     added = 0
 
     def save(d, txt):
@@ -62,7 +83,7 @@ def update_store(days=300):
 
     d, steps = now().date(), 0
     while steps < 15:                                    # 1) recent days, newest first
-        if d.weekday() < 5:
+        if d.weekday() < 5 and d not in hol:
             if f"{d:%Y%m%d}" in have:
                 break
             txt = _fetch(d)
@@ -76,7 +97,7 @@ def update_store(days=300):
         d = date(int(oldest[:4]), int(oldest[4:6]), int(oldest[6:8])) - timedelta(days=1)
         misses = 0
         while len(have) < days and misses < 40 and (now().date() - d).days < 500:
-            if d.weekday() < 5:
+            if d.weekday() < 5 and d not in hol:
                 txt = _fetch(d)
                 if txt:
                     save(d, txt)
@@ -91,18 +112,29 @@ def update_store(days=300):
 
 
 def load_store():
-    """{sym: dict(days, o, h, l, c, v, turnover)} oldest first, split/bonus adjusted."""
+    """{sym: dict(days, o, h, l, c, v, turnover)} oldest first, split/bonus adjusted. Files dated on an NSE holiday,
+    or repeating the previous session's prices, are holiday copies and are skipped."""
     files = sorted(f for f in os.listdir(BHAV) if f.endswith(".csv.gz")) if os.path.isdir(BHAV) else []
-    rows = {}
+    hol = _holidays()
+    rows, prev = {}, None
     for f in files:
         d = date(int(f[:4]), int(f[4:6]), int(f[6:8]))
+        if d in hol:
+            continue
+        day = {}
         with gzip.open(os.path.join(BHAV, f), "rt") as fh:
             for r in csv.reader(fh):
                 try:
                     vals = [float(x) for x in r[1:8]]
                 except ValueError:
                     continue
-                rows.setdefault(r[0], []).append((d, *vals))
+                if len(vals) == 7:
+                    day[r[0]] = vals
+        if prev is not None and _is_copy(day, prev):
+            continue
+        prev = day
+        for s, vals in day.items():
+            rows.setdefault(s, []).append((d, *vals))
     out = {}
     for s, rs in rows.items():
         if len(rs) < 60:

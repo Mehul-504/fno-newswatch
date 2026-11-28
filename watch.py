@@ -588,7 +588,7 @@ def refresh_levels():
     day, got = now().date(), 0
     for back in range(1, 30):
         d = day - timedelta(days=back)
-        if d.weekday() > 4:
+        if not trading_day(d):   # weekends and NSE holidays (NSE serves a copy of the day before for holidays)
             continue
         url = f"https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_{d:%d%m%Y}.csv"
         try:
